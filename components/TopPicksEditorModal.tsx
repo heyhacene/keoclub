@@ -19,7 +19,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { MediaItem, MediaType, PersonalItem, UserTopPicks } from '@/types/culture';
-import { searchAllCulture } from '@/lib/api-culture';
+import { universalSearch } from '@/lib/api-culture';
 
 type TopCategory = 'overall' | 'movie' | 'tv' | 'music' | 'book' | 'podcast';
 
@@ -173,7 +173,7 @@ export const TopPicksEditorModal: React.FC<TopPicksEditorModalProps> = ({
     setIsSearching(true);
     try {
       const typeFilter = currentCatConfig.mediaType || 'all';
-      const results = await searchAllCulture(searchQuery.trim(), typeFilter);
+      const results = await universalSearch(searchQuery.trim(), typeFilter);
       setSearchResults(results);
     } catch {
       setSearchResults([]);

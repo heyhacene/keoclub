@@ -210,6 +210,8 @@ export async function universalSearch(query: string, filterType: 'all' | MediaTy
   return combined;
 }
 
+export const searchAllCulture = universalSearch;
+
 /**
  * Suggestions culturelles d'accueil (Tops & Recommandations du moment)
  */
