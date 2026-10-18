@@ -15,6 +15,7 @@ import {
   Upload,
   AlertCircle,
   Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { UserProfile } from '@/types/culture';
 import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
@@ -50,6 +51,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +63,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setAvatar(user.avatar);
       setTmdbKey(getTmdbApiKey());
       setAvatarError(null);
+      setSaveSuccessMsg(null);
     }
   }, [isOpen, user]);
 
@@ -74,6 +77,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  /**
+   * Sauvegarde instantanée dès qu'un avatar est choisi ou téléversé
+   */
+  const applyAndSaveAvatar = (newAvatarUrl: string, message: string = 'Avatar mis à jour et enregistré !') => {
+    setAvatar(newAvatarUrl);
+    setAvatarError(null);
+    const updatedUser: UserProfile = {
+      ...user,
+      avatar: newAvatarUrl,
+      name: name.trim() || user.name,
+      handle: handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`,
+      bio: bio.trim(),
+    };
+    onSaveUser(updatedUser);
+    setSaveSuccessMsg(message);
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleSelectPreset = (preset: string) => {
+    applyAndSaveAvatar(preset, '✓ Avatar enregistré avec succès !');
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -82,7 +107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAvatarError(null);
     try {
       const processedUrl = await processImageFileToAvatar(file, 256, 0.85);
-      setAvatar(processedUrl);
+      applyAndSaveAvatar(processedUrl, '✓ Photo de profil importée et enregistrée !');
     } catch (err: any) {
       setAvatarError(err?.message || 'Erreur lors du chargement de l\'image.');
     } finally {
@@ -93,8 +118,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * Sauvegarde complète (nom, handle, bio, avatar, clé) à la fermeture
+   */
+  const handleSaveAndClose = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     onSaveUser({
       ...user,
       avatar: avatar || user.avatar,
@@ -127,29 +155,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-club-800 bg-club-950/60">
+      <div className="relative w-full max-w-lg bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[92vh]">
+        {/* Header avec bouton Enregistrer et Fermer direct */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-club-800 bg-club-950/70">
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-keo-600/20 text-keo-400 border border-keo-500/30">
               <SettingsIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">Paramètres KeoClub</h3>
-              <p className="text-[11px] text-slate-400">Profil, photo, partage & mise à jour</p>
+              <p className="text-[11px] text-slate-400">Profil, photo & personnalisation</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-club-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => handleSaveAndClose()}
+              className="py-1.5 px-3 bg-keo-600 hover:bg-keo-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm active:scale-95"
+              title="Enregistrer et fermer"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Enregistrer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSaveAndClose()}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-club-800 transition"
+              title="Fermer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSave} className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
+        <form onSubmit={handleSaveAndClose} className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
           {/* Share Code Card */}
           <div className="p-4 rounded-2xl bg-gradient-to-r from-keo-600/15 via-drop-pink/15 to-amber-500/10 border border-keo-500/30 flex items-center justify-between">
             <div>
@@ -174,7 +214,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-keo-400" />
-              <span>Mon Profil & Avatar</span>
+              <span>Mon Profil & Photo de profil</span>
             </h4>
 
             {/* Avatar customization card */}
@@ -183,7 +223,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* Avatar Preview */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="relative group cursor-pointer w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-drop-pink shadow-lg shadow-drop-pink/20 shrink-0 bg-club-900 transition hover:ring-keo-400"
+                  className="relative group cursor-pointer w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-drop-pink shadow-lg shadow-drop-pink/20 shrink-0 bg-club-900 transition hover:ring-keo-400 active:scale-95"
                   title="Cliquer pour changer de photo"
                 >
                   <img
@@ -222,10 +262,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>Choisir une photo dans mes fichiers</span>
                   </button>
                   <p className="text-[10px] text-slate-400 leading-tight">
-                    Prenez une photo ou choisissez une image depuis vos dossiers ou votre galerie Android.
+                    Prenez une photo ou choisissez une image depuis votre galerie. L'avatar est immédiatement enregistré.
                   </p>
                 </div>
               </div>
+
+              {/* Feedback d'enregistrement instantané */}
+              {saveSuccessMsg && (
+                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl flex items-center space-x-2 text-xs text-emerald-300 font-bold animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>{saveSuccessMsg}</span>
+                </div>
+              )}
 
               {avatarError && (
                 <div className="p-2.5 bg-red-500/15 border border-red-500/30 rounded-xl flex items-center space-x-2 text-[11px] text-red-300">
@@ -237,21 +285,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Presets Gallery */}
               <div className="pt-2 border-t border-club-850">
                 <p className="text-[10px] text-slate-400 font-semibold mb-2">
-                  Ou sélectionnez un avatar de la galerie :
+                  Ou touchez un avatar pour le sélectionner directement :
                 </p>
-                <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex items-center space-x-2.5 overflow-x-auto pb-1.5 scrollbar-none">
                   {AVATAR_PRESETS.map((preset, idx) => {
                     const isSelected = avatar === preset;
                     return (
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setAvatar(preset)}
-                        className={`relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border-2 transition active:scale-95 ${
+                        onClick={() => handleSelectPreset(preset)}
+                        className={`relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border-2 transition active:scale-95 ${
                           isSelected
-                            ? 'border-drop-pink ring-2 ring-drop-pink/40 scale-105'
-                            : 'border-club-800 opacity-60 hover:opacity-100'
+                            ? 'border-drop-pink ring-2 ring-drop-pink/50 scale-105 shadow-md shadow-drop-pink/30'
+                            : 'border-club-800 opacity-65 hover:opacity-100 hover:border-club-600'
                         }`}
+                        title="Sélectionner cet avatar"
                       >
                         <img src={preset} alt="Preset" className="w-full h-full object-cover" />
                         {isSelected && (
@@ -378,7 +427,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                onClose();
+                handleSaveAndClose();
                 onOpenAuth();
               }}
               className="w-full py-2.5 px-4 bg-club-800 hover:bg-club-700 text-slate-300 hover:text-white rounded-2xl text-xs font-bold transition border border-club-700"

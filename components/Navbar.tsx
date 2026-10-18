@@ -94,12 +94,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* Profile / Auth Button */}
+          {/* Profile / Settings Button */}
           <button
             type="button"
-            onClick={onOpenAuth}
+            onClick={onOpenSettings}
             className="flex items-center space-x-1.5 py-1 px-2.5 bg-club-900 hover:bg-club-850 border border-club-800 rounded-xl transition active:scale-95 text-xs"
-            title="Mon Profil / Changer de compte"
+            title="Mon Profil & Paramètres"
           >
             <img
               src={user.avatar}

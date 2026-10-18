@@ -336,7 +336,9 @@ export default function KeoClubHome() {
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="w-10 h-10 rounded-2xl object-cover ring-2 ring-drop-pink shrink-0"
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="w-10 h-10 rounded-2xl object-cover ring-2 ring-drop-pink shrink-0 cursor-pointer hover:ring-keo-400 active:scale-95 transition"
+                  title="Modifier mon avatar et profil"
                 />
                 <div>
                   <div className="flex items-center space-x-2">
@@ -940,9 +942,10 @@ export default function KeoClubHome() {
         onClose={() => setIsSettingsOpen(false)}
         user={user}
         onSaveUser={(u) => {
-          setUser(u);
-          saveUserProfile(u);
-          updateUserInCloud(u).catch(() => {});
+          const fresh = { ...u };
+          setUser(fresh);
+          saveUserProfile(fresh);
+          updateUserInCloud(fresh).catch(() => {});
         }}
         onOpenAuth={() => setIsAuthOpen(true)}
         totalSavedItems={personalList.length}
