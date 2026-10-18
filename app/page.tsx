@@ -25,6 +25,7 @@ import {
   UserPlus,
   Compass,
   Check,
+  Star,
 } from 'lucide-react';
 import {
   MediaItem,
