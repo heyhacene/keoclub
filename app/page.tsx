@@ -26,6 +26,10 @@ import {
   Compass,
   Check,
   Star,
+  Trophy,
+  Crown,
+  Edit3,
+  Share2,
 } from 'lucide-react';
 import {
   MediaItem,
@@ -35,6 +39,7 @@ import {
   Friend,
   UserProfile,
   PersonalItemStatus,
+  UserTopPicks,
 } from '@/types/culture';
 import {
   loadPersonalList,
@@ -55,6 +60,8 @@ import { SearchDiscoveryModal } from '@/components/SearchDiscoveryModal';
 import { AudioPlayerDrawer } from '@/components/AudioPlayerDrawer';
 import { SettingsModal } from '@/components/SettingsModal';
 import { AuthModal } from '@/components/AuthModal';
+import { CulturalShowcaseModal } from '@/components/CulturalShowcaseModal';
+import { TopPicksEditorModal } from '@/components/TopPicksEditorModal';
 import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
@@ -78,6 +85,10 @@ export default function KeoClubHome() {
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [selectedFriendForShowcase, setSelectedFriendForShowcase] = useState<Friend | null>(null);
+  const [isTopEditorOpen, setIsTopEditorOpen] = useState(false);
+  const [topEditorCategory, setTopEditorCategory] = useState<'overall' | 'movie' | 'tv' | 'music' | 'book' | 'podcast'>('movie');
+  const [copiedMyTopShare, setCopiedMyTopShare] = useState(false);
 
   // État lecteur audio flottant
   const [activeAudio, setActiveAudio] = useState<{
@@ -279,6 +290,36 @@ export default function KeoClubHome() {
       .catch(() => {});
   };
 
+  const handleSaveUserTopPicks = (newTopPicks: UserTopPicks) => {
+    const updated: UserProfile = {
+      ...user,
+      topPicks: newTopPicks,
+    };
+    setUser({ ...updated });
+    saveUserProfile(updated);
+    updateUserInCloud(updated).catch(() => {});
+  };
+
+  const handleShareMyTop = () => {
+    const top = user.topPicks || {};
+    const lines = [
+      `🏆 Découvrez le Panthéon Culturel de ${user.name} (${user.handle}) sur KeoClub !`,
+      top.overallFavorite ? `👑 Coup de Cœur Absolu : ${top.overallFavorite.title} (${top.overallFavorite.creator})` : '',
+      top.movie ? `🎬 Film : ${top.movie.title}` : '',
+      top.tv ? `📺 Série : ${top.tv.title}` : '',
+      top.music ? `🎵 Musique : ${top.music.title} - ${top.music.creator}` : '',
+      top.book ? `📚 Livre : ${top.book.title}` : '',
+      top.podcast ? `🎙️ Podcast : ${top.podcast.title}` : '',
+      `Code Ami : ${user.shareCode}`,
+    ].filter(Boolean).join('\n');
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(lines);
+      setCopiedMyTopShare(true);
+      setTimeout(() => setCopiedMyTopShare(false), 2500);
+    }
+  };
+
   // 8. Filtrage de Ma Liste
   const filteredPersonalList = useMemo(() => {
     return personalList.filter((item) => {
@@ -310,6 +351,102 @@ export default function KeoClubHome() {
     { id: 'book', label: 'Livres', icon: BookOpen },
     { id: 'podcast', label: 'Podcasts', icon: Mic },
   ];
+
+  const renderPillarCard = (
+    category: 'movie' | 'tv' | 'music' | 'book' | 'podcast',
+    label: string,
+    IconComponent: any,
+    media: MediaItem | undefined,
+    note: string | undefined,
+    color: string,
+    badgeBg: string
+  ) => {
+    const isPlaying = activeAudio?.url === media?.previewAudioUrl;
+    return (
+      <div className="p-4 rounded-3xl bg-club-900 border border-club-800 hover:border-club-700 transition flex flex-col justify-between space-y-3">
+        <div className="flex items-center justify-between">
+          <span className={`inline-flex items-center space-x-1.5 text-[10px] font-bold px-2 py-0.5 rounded-lg border ${badgeBg}`}>
+            <IconComponent className="w-3 h-3" />
+            <span>{label}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setTopEditorCategory(category);
+              setIsTopEditorOpen(true);
+            }}
+            className="text-[11px] font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1"
+          >
+            <Edit3 className="w-3 h-3 text-amber-400" />
+            <span>{media ? 'Modifier' : 'Définir'}</span>
+          </button>
+        </div>
+
+        {media ? (
+          <div className="flex items-start space-x-3.5">
+            <div className="relative shrink-0">
+              <img
+                src={media.posterUrl}
+                alt={media.title}
+                onClick={() => {
+                  setSelectedMedia(media);
+                  setIsDetailOpen(true);
+                }}
+                className="w-16 h-22 rounded-xl object-cover shadow-lg cursor-pointer hover:scale-102 transition ring-1 ring-club-700"
+              />
+              {media.previewAudioUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePlayAudio(media.previewAudioUrl!, media.title, media.creator, media.posterUrl);
+                  }}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-drop-pink text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition"
+                  title={isPlaying ? 'Pause' : 'Écouter l\'extrait 30s'}
+                >
+                  {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 space-y-1">
+              <h4
+                onClick={() => {
+                  setSelectedMedia(media);
+                  setIsDetailOpen(true);
+                }}
+                className="text-xs sm:text-sm font-extrabold text-white hover:text-amber-300 transition truncate cursor-pointer"
+              >
+                {media.title}
+              </h4>
+              <p className="text-xs text-slate-400 truncate">
+                {media.creator} {media.year ? `(${media.year})` : ''}
+              </p>
+              {note ? (
+                <p className="text-[11px] text-slate-300 italic line-clamp-2 leading-relaxed pt-1">
+                  « {note} »
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 italic pt-1">
+                  Aucun mot ajouté pour ce favori.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => {
+              setTopEditorCategory(category);
+              setIsTopEditorOpen(true);
+            }}
+            className="p-4 text-center border border-dashed border-club-800 hover:border-club-600 rounded-2xl cursor-pointer transition bg-club-950/30 text-xs text-slate-400"
+          >
+            + Définir mon {label.toLowerCase()}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-club-950 text-slate-100 flex flex-col font-sans selection:bg-drop-pink selection:text-white pb-28">
@@ -720,7 +857,205 @@ export default function KeoClubHome() {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 3: MON CERCLE (AMIS & AFFINITÉS CULTURELLES)               */}
+        {/* TAB 3: MON PANTHÉON / MON TOP CLUB (PAGE CONSULTABLE DU CERCLE) */}
+        {/* ============================================================== */}
+        {currentTab === 'top' && (
+          <div className="space-y-6">
+            {/* Header Mon Top */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <Trophy className="w-6 h-6 text-amber-400" />
+                  <h1 className="text-xl sm:text-2xl font-black text-white">
+                    Mon Panthéon Culturel
+                  </h1>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Votre vitrine culturelle officielle, visible et consultable par tous les membres de votre cercle
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleShareMyTop}
+                  className="py-2 px-3 bg-club-900 hover:bg-club-800 text-slate-200 border border-club-700 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm active:scale-95"
+                  title="Partager mon Top"
+                >
+                  {copiedMyTopShare ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{copiedMyTopShare ? 'Copié !' : 'Partager'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTopEditorCategory('overall');
+                    setIsTopEditorOpen(true);
+                  }}
+                  className="py-2 px-3.5 bg-gradient-to-r from-amber-500 to-drop-pink hover:opacity-95 text-club-950 font-black rounded-xl text-xs transition flex items-center space-x-1.5 shadow-md shadow-amber-500/20 active:scale-95"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Modifier mon Top</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Bar */}
+            <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/15 via-keo-600/10 to-drop-pink/15 border border-amber-500/30 flex items-center justify-between">
+              <div className="flex items-center space-x-3.5">
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400 shadow-md cursor-pointer hover:scale-105 transition"
+                />
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-extrabold text-sm text-white">{user.name}</span>
+                    <span className="text-xs font-mono font-bold text-amber-400">{user.handle}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5 line-clamp-1">{user.bio}</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFriendForShowcase({
+                    id: user.id,
+                    name: user.name,
+                    handle: user.handle,
+                    avatar: user.avatar,
+                    bio: user.bio,
+                    favoriteGenres: ['Cinéma', 'Musique', 'SF'],
+                    topPicks: user.topPicks,
+                    dropsCount: drops.length,
+                    isOnline: true,
+                  });
+                }}
+                className="hidden sm:flex py-1.5 px-3 rounded-xl bg-club-900 hover:bg-club-800 text-slate-300 hover:text-white text-xs font-semibold border border-club-700 transition"
+              >
+                Aperçu pour mes amis
+              </button>
+            </div>
+
+            {/* 1. HERO : Coup de Cœur Absolu */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/20 via-club-950 to-club-900 border border-amber-500/40 p-4 sm:p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-3.5">
+                <span className="flex items-center space-x-1.5 text-xs font-black tracking-wider uppercase text-amber-400">
+                  <Crown className="w-4 h-4 fill-amber-400" />
+                  <span>Mon Coup de Cœur Absolu</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTopEditorCategory('overall');
+                    setIsTopEditorOpen(true);
+                  }}
+                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 underline"
+                >
+                  {user.topPicks?.overallFavorite ? 'Changer' : 'Définir'}
+                </button>
+              </div>
+
+              {user.topPicks?.overallFavorite ? (
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  <img
+                    src={user.topPicks.overallFavorite.posterUrl}
+                    alt={user.topPicks.overallFavorite.title}
+                    onClick={() => {
+                      setSelectedMedia(user.topPicks!.overallFavorite!);
+                      setIsDetailOpen(true);
+                    }}
+                    className="w-24 h-34 sm:w-28 sm:h-40 rounded-2xl object-cover shadow-2xl ring-2 ring-amber-400/60 shrink-0 cursor-pointer hover:scale-102 transition"
+                  />
+
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div>
+                      <h3
+                        onClick={() => {
+                          setSelectedMedia(user.topPicks!.overallFavorite!);
+                          setIsDetailOpen(true);
+                        }}
+                        className="text-lg sm:text-xl font-black text-white hover:text-amber-300 transition cursor-pointer truncate"
+                      >
+                        {user.topPicks.overallFavorite.title}
+                      </h3>
+                      <p className="text-xs text-slate-300 font-semibold mt-0.5">
+                        {user.topPicks.overallFavorite.creator} {user.topPicks.overallFavorite.year ? `• ${user.topPicks.overallFavorite.year}` : ''}
+                      </p>
+                    </div>
+
+                    {user.topPicks.overallNote ? (
+                      <blockquote className="text-xs text-amber-200/90 italic bg-amber-950/40 border-l-2 border-amber-400 pl-3 py-1.5 rounded-r-lg">
+                        « {user.topPicks.overallNote} »
+                      </blockquote>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">
+                        Aucun mot ajouté. Cliquez sur "Changer" pour ajouter une citation ou avis personnalisé !
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedMedia(user.topPicks!.overallFavorite!);
+                          setIsDetailOpen(true);
+                        }}
+                        className="py-1.5 px-3 bg-club-800 hover:bg-club-700 text-slate-200 rounded-xl text-xs font-bold transition border border-club-700"
+                      >
+                        Voir la fiche
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => {
+                    setTopEditorCategory('overall');
+                    setIsTopEditorOpen(true);
+                  }}
+                  className="p-8 text-center border-2 border-dashed border-amber-500/30 rounded-2xl cursor-pointer hover:border-amber-400 transition bg-club-950/40"
+                >
+                  <Crown className="w-8 h-8 text-amber-400/50 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-white">Vous n'avez pas encore défini votre Coup de Cœur Absolu</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    L'œuvre emblématique qui vous représente le plus auprès de vos amis
+                  </p>
+                  <span className="inline-block mt-3 py-1.5 px-3.5 bg-amber-500 text-club-950 font-black rounded-xl text-xs shadow-md">
+                    + Choisir mon Coup de Cœur
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 2. THE 5 PILLARS OF CULTURE */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-extrabold text-white flex items-center space-x-2">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                  <span>Mon Top 5 par Univers</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Film, série, musique, livre et podcast préférés de votre profil
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {renderPillarCard('movie', 'Film Coup de Cœur', Film, user.topPicks?.movie, user.topPicks?.movieNote, 'text-amber-400', 'bg-amber-500/15 border-amber-500/30 text-amber-300')}
+                {renderPillarCard('tv', 'Série Incontournable', Tv, user.topPicks?.tv, user.topPicks?.tvNote, 'text-keo-400', 'bg-keo-500/15 border-keo-500/30 text-keo-300')}
+                {renderPillarCard('music', 'Musique / Album Préféré', Music, user.topPicks?.music, user.topPicks?.musicNote, 'text-drop-pink', 'bg-drop-pink/15 border-drop-pink/30 text-drop-pink')}
+                {renderPillarCard('book', 'Livre Culte', BookOpen, user.topPicks?.book, user.topPicks?.bookNote, 'text-emerald-400', 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300')}
+                {renderPillarCard('podcast', 'Podcast Incontournable', Mic, user.topPicks?.podcast, user.topPicks?.podcastNote, 'text-drop-cyan', 'bg-drop-cyan/15 border-drop-cyan/30 text-drop-cyan')}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 4: MON CERCLE (AMIS & AFFINITÉS CULTURELLES)               */}
         {/* ============================================================== */}
         {currentTab === 'circle' && (
           <div className="space-y-6">
@@ -734,7 +1069,7 @@ export default function KeoClubHome() {
                   </h1>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Vos curateurs de confiance avec qui vous échangez vos coups de cœur
+                  Vos curateurs de confiance : consultez leurs Tops et échangez vos pépites
                 </p>
               </div>
 
@@ -783,12 +1118,15 @@ export default function KeoClubHome() {
                   className="p-4 sm:p-5 rounded-3xl bg-club-900 border border-club-800 hover:border-club-700 transition flex flex-col justify-between space-y-4"
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
+                    <div
+                      onClick={() => setSelectedFriendForShowcase(friend)}
+                      className="flex items-center space-x-3 cursor-pointer group"
+                    >
                       <div className="relative">
                         <img
                           src={friend.avatar}
                           alt={friend.name}
-                          className="w-12 h-12 rounded-2xl object-cover ring-2 ring-drop-cyan/50"
+                          className="w-12 h-12 rounded-2xl object-cover ring-2 ring-drop-cyan/50 group-hover:scale-105 transition"
                         />
                         {friend.isOnline && (
                           <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-club-900" />
@@ -797,7 +1135,7 @@ export default function KeoClubHome() {
 
                       <div>
                         <div className="flex items-center space-x-1.5">
-                          <h3 className="font-extrabold text-sm text-white">{friend.name}</h3>
+                          <h3 className="font-extrabold text-sm text-white group-hover:text-amber-400 transition">{friend.name}</h3>
                           <span className="text-[11px] text-slate-400 font-mono">{friend.handle}</span>
                         </div>
                         <p className="text-xs text-slate-300 mt-0.5 line-clamp-1">{friend.bio}</p>
@@ -825,11 +1163,8 @@ export default function KeoClubHome() {
                   {/* Friend's Top Pick if any */}
                   {friend.topPick && (
                     <div
-                      onClick={() => {
-                        setSelectedMedia(friend.topPick!);
-                        setIsDetailOpen(true);
-                      }}
-                      className="p-2.5 rounded-2xl bg-club-950 border border-club-800 flex items-center space-x-3 cursor-pointer hover:border-club-700 transition"
+                      onClick={() => setSelectedFriendForShowcase(friend)}
+                      className="p-2.5 rounded-2xl bg-club-950 border border-club-800 flex items-center space-x-3 cursor-pointer hover:border-amber-400/50 transition group"
                     >
                       <img
                         src={friend.topPick.posterUrl}
@@ -838,26 +1173,37 @@ export default function KeoClubHome() {
                       />
                       <div className="min-w-0 flex-1">
                         <span className="text-[9px] font-bold text-amber-400 uppercase flex items-center gap-1">
-                          <Star className="w-2.5 h-2.5 fill-amber-400" /> Son Coup de Cœur
+                          <Crown className="w-2.5 h-2.5 fill-amber-400" /> Coup de Cœur de son Panthéon
                         </span>
-                        <h4 className="text-xs font-bold text-white truncate">{friend.topPick.title}</h4>
+                        <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition">{friend.topPick.title}</h4>
                         <p className="text-[11px] text-slate-400 truncate">{friend.topPick.creator}</p>
                       </div>
                     </div>
                   )}
 
-                  {/* Drop to this friend button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMediaToDrop(friend.topPick || null);
-                      setIsDropModalOpen(true);
-                    }}
-                    className="w-full py-2.5 px-3 rounded-2xl bg-club-800 hover:bg-keo-600 text-white text-xs font-bold transition flex items-center justify-center space-x-2 active:scale-98"
-                  >
-                    <Send className="w-3.5 h-3.5 text-drop-pink" />
-                    <span>Lui faire un Drop</span>
-                  </button>
+                  {/* Action Buttons for Friend */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFriendForShowcase(friend)}
+                      className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-drop-pink/15 to-keo-600/20 hover:from-amber-500/30 hover:to-drop-pink/30 text-amber-300 text-xs font-black transition flex items-center justify-center space-x-2 border border-amber-500/30 active:scale-98 shadow-sm"
+                    >
+                      <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Consulter son Top & Coups de Cœur</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaToDrop(friend.topPick || null);
+                        setIsDropModalOpen(true);
+                      }}
+                      className="w-full py-2 px-3 rounded-2xl bg-club-800 hover:bg-club-700 text-slate-300 hover:text-white text-xs font-bold transition flex items-center justify-center space-x-2 active:scale-98"
+                    >
+                      <Send className="w-3.5 h-3.5 text-drop-pink" />
+                      <span>Lui faire un Drop</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -957,6 +1303,39 @@ export default function KeoClubHome() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+      />
+
+      {/* Cultural Showcase Modal (Panthéon consultable d'un ami ou de soi-même) */}
+      <CulturalShowcaseModal
+        friend={selectedFriendForShowcase}
+        isOpen={!!selectedFriendForShowcase}
+        onClose={() => setSelectedFriendForShowcase(null)}
+        onAddToList={(media) => {
+          handleTogglePersonalList(media, 'want');
+        }}
+        onSendDrop={(media, friend) => {
+          setSelectedFriendForShowcase(null);
+          setMediaToDrop(media);
+          setIsDropModalOpen(true);
+        }}
+        onSelectMedia={(media) => {
+          setSelectedFriendForShowcase(null);
+          setSelectedMedia(media);
+          setIsDetailOpen(true);
+        }}
+        onPlayAudio={handlePlayAudio}
+        isPlayingAudioUrl={activeAudio?.url}
+        isMediaInMyList={(id) => personalList.some((p) => p.media.id === id)}
+      />
+
+      {/* Top Picks Editor Modal (Éditeur de mon Top Club) */}
+      <TopPicksEditorModal
+        isOpen={isTopEditorOpen}
+        onClose={() => setIsTopEditorOpen(false)}
+        topPicks={user.topPicks || {}}
+        onSaveTopPicks={handleSaveUserTopPicks}
+        personalList={personalList}
+        defaultCategory={topEditorCategory}
       />
     </div>
   );

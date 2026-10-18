@@ -46,6 +46,24 @@ export interface PersonalItem {
   updatedAt: number;
 }
 
+/**
+ * Top Culturel / Panthéon personnel consultable par le cercle d'amis
+ */
+export interface UserTopPicks {
+  movie?: MediaItem;
+  movieNote?: string;
+  tv?: MediaItem;
+  tvNote?: string;
+  music?: MediaItem;
+  musicNote?: string;
+  book?: MediaItem;
+  bookNote?: string;
+  podcast?: MediaItem;
+  podcastNote?: string;
+  overallFavorite?: MediaItem;
+  overallNote?: string;
+}
+
 export interface Friend {
   id: string;
   name: string;
@@ -54,6 +72,7 @@ export interface Friend {
   bio?: string;
   favoriteGenres: string[];
   topPick?: MediaItem;
+  topPicks?: UserTopPicks;
   dropsCount: number;
   isOnline?: boolean;
 }
@@ -65,4 +84,5 @@ export interface UserProfile {
   avatar: string;
   bio: string;
   shareCode: string;
+  topPicks?: UserTopPicks;
 }

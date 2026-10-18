@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Flame, Bookmark, Users, Sparkles, Plus } from 'lucide-react';
+import { Flame, Bookmark, Users, Sparkles, Trophy } from 'lucide-react';
 
-export type MainTab = 'drops' | 'list' | 'circle';
+export type MainTab = 'drops' | 'list' | 'top' | 'circle';
 
 interface BottomNavProps {
   currentTab: MainTab;
@@ -20,13 +20,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 pointer-events-none pb-safe">
-      <div className="max-w-md mx-auto px-4 pb-3 pt-1">
-        <div className="pointer-events-auto bg-club-900/90 backdrop-blur-xl border border-club-700/80 rounded-3xl shadow-2xl shadow-black/80 px-4 py-2 flex items-center justify-between">
+      <div className="max-w-lg mx-auto px-3 sm:px-4 pb-3 pt-1">
+        <div className="pointer-events-auto bg-club-900/90 backdrop-blur-xl border border-club-700/80 rounded-3xl shadow-2xl shadow-black/80 px-2 sm:px-3 py-2 flex items-center justify-between">
           {/* Tab 1 : Drops Inbox */}
           <button
             type="button"
             onClick={() => onChangeTab('drops')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition relative ${
+            className={`flex flex-col items-center py-1 px-2.5 rounded-2xl transition relative ${
               currentTab === 'drops'
                 ? 'text-drop-pink font-bold'
                 : 'text-slate-400 hover:text-slate-200'
@@ -47,7 +47,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <button
             type="button"
             onClick={() => onChangeTab('list')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition ${
+            className={`flex flex-col items-center py-1 px-2.5 rounded-2xl transition ${
               currentTab === 'list'
                 ? 'text-keo-400 font-bold'
                 : 'text-slate-400 hover:text-slate-200'
@@ -58,25 +58,39 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </button>
 
           {/* Central Floating Button : "DROPPER" */}
-          <div className="-translate-y-5">
+          <div className="-translate-y-5 px-1">
             <button
               type="button"
               onClick={onOpenDropAction}
-              className="w-14 h-14 rounded-full bg-gradient-to-tr from-keo-600 via-drop-pink to-amber-400 text-white flex items-center justify-center shadow-xl shadow-drop-pink/30 hover:scale-105 active:scale-95 transition ring-4 ring-club-950 group"
+              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-keo-600 via-drop-pink to-amber-400 text-white flex items-center justify-center shadow-xl shadow-drop-pink/30 hover:scale-105 active:scale-95 transition ring-4 ring-club-950 group"
               title="Dropper une recommandation à un ami"
             >
-              <Sparkles className="w-6 h-6 text-amber-200 group-hover:rotate-12 transition-transform" />
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-200 group-hover:rotate-12 transition-transform" />
             </button>
-            <span className="block text-center text-[9px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-drop-pink to-amber-300 mt-1">
+            <span className="block text-center text-[9px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-drop-pink to-amber-300 mt-0.5">
               DROPPER
             </span>
           </div>
 
-          {/* Tab 3 : Mon Cercle (Amis) */}
+          {/* Tab 3 : Mon Top Club */}
+          <button
+            type="button"
+            onClick={() => onChangeTab('top')}
+            className={`flex flex-col items-center py-1 px-2.5 rounded-2xl transition ${
+              currentTab === 'top'
+                ? 'text-amber-400 font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Trophy className={`w-5 h-5 ${currentTab === 'top' ? 'stroke-[2.5]' : ''}`} />
+            <span className="text-[10px] mt-1 tracking-tight">Mon Top</span>
+          </button>
+
+          {/* Tab 4 : Mon Cercle (Amis) */}
           <button
             type="button"
             onClick={() => onChangeTab('circle')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition ${
+            className={`flex flex-col items-center py-1 px-2.5 rounded-2xl transition ${
               currentTab === 'circle'
                 ? 'text-drop-cyan font-bold'
                 : 'text-slate-400 hover:text-slate-200'
