@@ -1,0 +1,16 @@
+{
+  "name": "KeoClub - Partage Culturel & Drops",
+  "short_name": "KeoClub",
+  "description": "Le réseau social de partage culturel entre amis : Films, Séries, Musique, Livres et Podcasts",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06070b",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

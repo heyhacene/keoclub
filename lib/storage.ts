@@ -1,0 +1,236 @@
+import { PersonalItem, DropItem, Friend, UserProfile, MediaItem, PersonalItemStatus } from '@/types/culture';
+import { TRENDING_SUGGESTIONS } from './api-culture';
+
+const STORAGE_KEYS = {
+  PERSONAL_LIST: 'keoclub_personal_list_v1',
+  DROPS_INBOX: 'keoclub_drops_inbox_v1',
+  FRIENDS: 'keoclub_friends_v1',
+  USER_PROFILE: 'keoclub_profile_v1',
+};
+
+// Profil utilisateur par défaut
+export const DEFAULT_USER: UserProfile = {
+  id: 'user-me',
+  name: 'Hacène',
+  handle: '@hacene',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+  bio: 'Amateur de grands récits de SF, de vinyles et de récits immersifs.',
+  shareCode: 'KEO-CLUB-4821',
+};
+
+// Amis pré-remplis
+export const DEFAULT_FRIENDS: Friend[] = [
+  {
+    id: 'friend-sarah',
+    name: 'Sarah',
+    handle: '@sarah_cine',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+    bio: 'Cinéphile passionnée & dénicheuse de pépites indé.',
+    favoriteGenres: ['Cinéma', 'Thriller', 'Série'],
+    dropsCount: 14,
+    isOnline: true,
+    topPick: TRENDING_SUGGESTIONS[0], // Dune 2
+  },
+  {
+    id: 'friend-thomas',
+    name: 'Thomas',
+    handle: '@thomas_sound',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+    bio: 'DJ le week-end, toujours à la recherche du sample parfait.',
+    favoriteGenres: ['Électro', 'Funk', 'Jazz'],
+    dropsCount: 9,
+    isOnline: false,
+    topPick: TRENDING_SUGGESTIONS[2], // Daft Punk
+  },
+  {
+    id: 'friend-chloe',
+    name: 'Chloé',
+    handle: '@chloe_lit',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80',
+    bio: 'Dévoreuse de romans & BDs graphiques.',
+    favoriteGenres: ['Roman', 'Science-Fiction', 'BD'],
+    dropsCount: 21,
+    isOnline: true,
+    topPick: TRENDING_SUGGESTIONS[3], // Le Problème à 3 corps
+  },
+  {
+    id: 'friend-malik',
+    name: 'Malik',
+    handle: '@malik_stream',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
+    bio: 'Binge-watcher assumé & auditeur de podcasts en voyage.',
+    favoriteGenres: ['Podcast', 'Séries', 'Docu'],
+    dropsCount: 12,
+    isOnline: true,
+    topPick: TRENDING_SUGGESTIONS[1], // Severance
+  },
+];
+
+// Drops initiaux reçus d'amis (La magie de l'Inbox)
+export const DEFAULT_DROPS: DropItem[] = [
+  {
+    id: 'drop-demo-1',
+    media: TRENDING_SUGGESTIONS[1], // Severance
+    senderId: 'friend-malik',
+    senderName: 'Malik',
+    senderAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
+    note: 'Tu me disais que tu cherchais une série prenante : lance le premier épisode ce soir, le twist est fou !',
+    status: 'pending',
+    createdAt: Date.now() - 3600000 * 2, // Il y a 2h
+  },
+  {
+    id: 'drop-demo-2',
+    media: TRENDING_SUGGESTIONS[0], // Dune 2
+    senderId: 'friend-sarah',
+    senderName: 'Sarah',
+    senderAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+    note: 'On en avait parlé le week-end dernier ! Mets un bon casque pour la bande-son de Hans Zimmer.',
+    status: 'pending',
+    createdAt: Date.now() - 3600000 * 8, // Il y a 8h
+  },
+  {
+    id: 'drop-demo-3',
+    media: TRENDING_SUGGESTIONS[2], // Daft Punk
+    senderId: 'friend-thomas',
+    senderName: 'Thomas',
+    senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+    note: 'Je viens de réécouter cet album au casque. Le morceau "Touch" à 4:20 me donne toujours des frissons.',
+    status: 'accepted',
+    createdAt: Date.now() - 3600000 * 24, // Hier
+  },
+];
+
+// Liste personnelle initiale (Ma Liste)
+export const DEFAULT_PERSONAL_LIST: PersonalItem[] = [
+  {
+    id: 'perso-1',
+    media: TRENDING_SUGGESTIONS[3], // Le Problème à 3 corps
+    status: 'in_progress',
+    myRating: 5,
+    myReview: 'Fascinant du début à la fin. La physique quantique mêlée au récit historique.',
+    droppedBy: {
+      name: 'Chloé',
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80',
+      note: 'Si tu aimes la Hard-SF, ce livre va te retourner le cerveau.',
+    },
+    addedAt: Date.now() - 86400000 * 5,
+    updatedAt: Date.now() - 86400000 * 2,
+  },
+  {
+    id: 'perso-2',
+    media: TRENDING_SUGGESTIONS[5], // Interstellar
+    status: 'favorite',
+    myRating: 5,
+    myReview: 'Mon film préféré de la décennie. Une leçon de cinéma et d\'émotion.',
+    addedAt: Date.now() - 86400000 * 20,
+    updatedAt: Date.now() - 86400000 * 20,
+  },
+  {
+    id: 'perso-3',
+    media: TRENDING_SUGGESTIONS[4], // Transfert
+    status: 'want',
+    droppedBy: {
+      name: 'Malik',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
+      note: 'Écoute l\'épisode "Le Grand Saut", incroyable.',
+    },
+    addedAt: Date.now() - 86400000 * 2,
+    updatedAt: Date.now() - 86400000 * 2,
+  },
+];
+
+/**
+ * Fonctions de persistance LocalStorage
+ */
+
+export function loadPersonalList(): PersonalItem[] {
+  if (typeof window === 'undefined') return DEFAULT_PERSONAL_LIST;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.PERSONAL_LIST);
+    if (!raw) {
+      savePersonalList(DEFAULT_PERSONAL_LIST);
+      return DEFAULT_PERSONAL_LIST;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return DEFAULT_PERSONAL_LIST;
+  }
+}
+
+export function savePersonalList(list: PersonalItem[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.PERSONAL_LIST, JSON.stringify(list));
+  } catch (e) {
+    console.error('savePersonalList error', e);
+  }
+}
+
+export function loadDrops(): DropItem[] {
+  if (typeof window === 'undefined') return DEFAULT_DROPS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DROPS_INBOX);
+    if (!raw) {
+      saveDrops(DEFAULT_DROPS);
+      return DEFAULT_DROPS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return DEFAULT_DROPS;
+  }
+}
+
+export function saveDrops(drops: DropItem[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.DROPS_INBOX, JSON.stringify(drops));
+  } catch (e) {
+    console.error('saveDrops error', e);
+  }
+}
+
+export function loadFriends(): Friend[] {
+  if (typeof window === 'undefined') return DEFAULT_FRIENDS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.FRIENDS);
+    if (!raw) {
+      saveFriends(DEFAULT_FRIENDS);
+      return DEFAULT_FRIENDS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return DEFAULT_FRIENDS;
+  }
+}
+
+export function saveFriends(friends: Friend[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
+  } catch (e) {
+    console.error('saveFriends error', e);
+  }
+}
+
+export function loadUserProfile(): UserProfile {
+  if (typeof window === 'undefined') return DEFAULT_USER;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    if (!raw) {
+      saveUserProfile(DEFAULT_USER);
+      return DEFAULT_USER;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return DEFAULT_USER;
+  }
+}
+
+export function saveUserProfile(user: UserProfile): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
+  } catch (e) {
+    console.error('saveUserProfile error', e);
+  }
+}
