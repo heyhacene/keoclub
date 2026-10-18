@@ -55,7 +55,7 @@ import { SearchDiscoveryModal } from '@/components/SearchDiscoveryModal';
 import { AudioPlayerDrawer } from '@/components/AudioPlayerDrawer';
 import { SettingsModal } from '@/components/SettingsModal';
 import { AuthModal } from '@/components/AuthModal';
-import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud } from '@/lib/supabase';
+import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
   const [currentTab, setCurrentTab] = useState<MainTab>('drops');
@@ -942,6 +942,7 @@ export default function KeoClubHome() {
         onSaveUser={(u) => {
           setUser(u);
           saveUserProfile(u);
+          updateUserInCloud(u).catch(() => {});
         }}
         onOpenAuth={() => setIsAuthOpen(true)}
         totalSavedItems={personalList.length}

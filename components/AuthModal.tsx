@@ -1,24 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, UserPlus, LogIn, Lock, Sparkles, Check, AlertCircle, Loader2, KeyRound, AtSign, Smile } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  X,
+  UserPlus,
+  LogIn,
+  Lock,
+  Sparkles,
+  Check,
+  AlertCircle,
+  Loader2,
+  KeyRound,
+  Upload,
+  Camera,
+} from 'lucide-react';
 import { UserProfile } from '@/types/culture';
 import { registerWithPseudo, loginWithPseudo } from '@/lib/supabase';
+import { AVATAR_PRESETS, processImageFileToAvatar } from '@/lib/imageUtils';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: UserProfile) => void;
 }
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&q=80',
-];
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
@@ -32,9 +36,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [bio, setBio] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_PRESETS[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingAvatar(true);
+    setErrorMsg(null);
+    try {
+      const processedUrl = await processImageFileToAvatar(file, 256, 0.85);
+      setSelectedAvatar(processedUrl);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Erreur lors du traitement de votre photo.');
+    } finally {
+      setIsProcessingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +123,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col">
+      <div className="relative w-full max-w-md bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-club-800 bg-club-950/70">
           <div className="flex items-center space-x-2">
@@ -154,7 +180,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {errorMsg && (
             <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-2xl flex items-center space-x-2 text-xs text-red-300">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
@@ -164,32 +190,83 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {tab === 'register' ? (
             <>
-              {/* Avatar Selector */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Choisissez votre avatar
+              {/* Avatar Selector with File Upload */}
+              <div className="p-3.5 bg-club-950 rounded-2xl border border-club-800 space-y-3">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Votre Photo / Avatar
                 </label>
-                <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
-                  {AVATAR_PRESETS.map((av, idx) => {
-                    const isSelected = selectedAvatar === av;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setSelectedAvatar(av)}
-                        className={`relative w-11 h-11 rounded-2xl overflow-hidden shrink-0 border-2 transition active:scale-95 ${
-                          isSelected ? 'border-drop-pink ring-2 ring-drop-pink/30 scale-105' : 'border-club-800 opacity-60 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={av} alt="Avatar" className="w-full h-full object-cover" />
-                        {isSelected && (
-                          <div className="absolute inset-0 bg-drop-pink/20 flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white drop-shadow" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+
+                <div className="flex items-center gap-3">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative group cursor-pointer w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-drop-pink shadow-md shrink-0 bg-club-900"
+                    title="Cliquer pour importer une photo"
+                  >
+                    <img
+                      src={selectedAvatar}
+                      alt="Avatar"
+                      className="w-full h-full object-cover transition group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition flex items-center justify-center text-white">
+                      {isProcessingAvatar ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-drop-pink" />
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingAvatar}
+                      className="w-full py-2 px-2.5 bg-club-850 hover:bg-club-800 text-white rounded-xl text-[11px] font-bold transition flex items-center justify-center space-x-1.5 border border-club-700 active:scale-95"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-drop-pink" />
+                      <span>Charger ma propre photo</span>
+                    </button>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      Depuis votre galerie ou vos dossiers.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-club-850">
+                  <p className="text-[10px] text-slate-400 font-semibold mb-2">
+                    Ou choisissez un avatar prédéfini :
+                  </p>
+                  <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                    {AVATAR_PRESETS.map((av, idx) => {
+                      const isSelected = selectedAvatar === av;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedAvatar(av)}
+                          className={`relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2 transition active:scale-95 ${
+                            isSelected
+                              ? 'border-drop-pink ring-2 ring-drop-pink/30 scale-105'
+                              : 'border-club-800 opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={av} alt="Avatar" className="w-full h-full object-cover" />
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-drop-pink/30 flex items-center justify-center">
+                              <Check className="w-3.5 h-3.5 text-white drop-shadow" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -265,7 +342,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Submit Register */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isProcessingAvatar}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-keo-600 via-drop-pink to-amber-500 hover:opacity-95 text-white rounded-2xl text-xs sm:text-sm font-extrabold transition shadow-lg shadow-drop-pink/20 flex items-center justify-center space-x-2 active:scale-98 disabled:opacity-50"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}

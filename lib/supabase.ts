@@ -140,6 +140,28 @@ export async function loginWithPseudo(params: {
 }
 
 /**
+ * 2b. Mettre à jour les informations du profil utilisateur dans le Cloud
+ */
+export async function updateUserInCloud(user: UserProfile): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('keoclub_users')
+      .update({
+        name: user.name,
+        handle: user.handle,
+        avatar: user.avatar,
+        bio: user.bio,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 3. Rechercher un ami dans le Cloud par pseudo ou code ami
  */
 export async function searchFriendsInCloud(query: string): Promise<Friend[]> {

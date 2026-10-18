@@ -1,10 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Settings as SettingsIcon, User, Download, Key, Share2, Check, RefreshCw, Smartphone, ShieldCheck, Heart } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  Settings as SettingsIcon,
+  User,
+  Download,
+  Key,
+  Share2,
+  Check,
+  RefreshCw,
+  Smartphone,
+  Camera,
+  Upload,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
 import { UserProfile } from '@/types/culture';
 import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
 import { getDirectKeoClubApkUrl, DEFAULT_KEOCLUB_BUILD, fetchLatestKeoClubApk } from '@/lib/apkUpdate';
+import { AVATAR_PRESETS, processImageFileToAvatar } from '@/lib/imageUtils';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -28,17 +43,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [name, setName] = useState(user.name);
   const [handle, setHandle] = useState(user.handle);
   const [bio, setBio] = useState(user.bio);
+  const [avatar, setAvatar] = useState(user.avatar);
   const [tmdbKey, setTmdbKey] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setName(user.name);
       setHandle(user.handle);
       setBio(user.bio);
+      setAvatar(user.avatar);
       setTmdbKey(getTmdbApiKey());
+      setAvatarError(null);
     }
   }, [isOpen, user]);
 
@@ -52,10 +74,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingAvatar(true);
+    setAvatarError(null);
+    try {
+      const processedUrl = await processImageFileToAvatar(file, 256, 0.85);
+      setAvatar(processedUrl);
+    } catch (err: any) {
+      setAvatarError(err?.message || 'Erreur lors du chargement de l\'image.');
+    } finally {
+      setIsProcessingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveUser({
       ...user,
+      avatar: avatar || user.avatar,
       name: name.trim() || user.name,
       handle: handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`,
       bio: bio.trim(),
@@ -85,7 +127,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[88vh]">
+      <div className="relative w-full max-w-lg bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-club-800 bg-club-950/60">
           <div className="flex items-center space-x-2.5">
@@ -94,7 +136,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">Paramètres KeoClub</h3>
-              <p className="text-[11px] text-slate-400">Profil, partage & mise à jour</p>
+              <p className="text-[11px] text-slate-400">Profil, photo, partage & mise à jour</p>
             </div>
           </div>
           <button
@@ -128,12 +170,101 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
 
-          {/* Profile form */}
-          <div className="space-y-3">
+          {/* Profile form & Avatar customization */}
+          <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-keo-400" />
-              <span>Mon Profil</span>
+              <span>Mon Profil & Avatar</span>
             </h4>
+
+            {/* Avatar customization card */}
+            <div className="p-4 rounded-2xl bg-club-950 border border-club-800 space-y-3.5">
+              <div className="flex items-center gap-4">
+                {/* Avatar Preview */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative group cursor-pointer w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-drop-pink shadow-lg shadow-drop-pink/20 shrink-0 bg-club-900 transition hover:ring-keo-400"
+                  title="Cliquer pour changer de photo"
+                >
+                  <img
+                    src={avatar}
+                    alt={name}
+                    className="w-full h-full object-cover transition group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/45 group-hover:bg-black/60 transition flex flex-col items-center justify-center text-white opacity-90 group-hover:opacity-100">
+                    {isProcessingAvatar ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-drop-pink" />
+                    ) : (
+                      <>
+                        <Camera className="w-5 h-5 mb-0.5 text-white drop-shadow" />
+                        <span className="text-[9px] font-bold tracking-tight">Modifier</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Upload from device button */}
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessingAvatar}
+                    className="w-full py-2.5 px-3 bg-club-800 hover:bg-club-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 border border-club-700 shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-drop-pink" />
+                    <span>Choisir une photo dans mes fichiers</span>
+                  </button>
+                  <p className="text-[10px] text-slate-400 leading-tight">
+                    Prenez une photo ou choisissez une image depuis vos dossiers ou votre galerie Android.
+                  </p>
+                </div>
+              </div>
+
+              {avatarError && (
+                <div className="p-2.5 bg-red-500/15 border border-red-500/30 rounded-xl flex items-center space-x-2 text-[11px] text-red-300">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-400" />
+                  <span>{avatarError}</span>
+                </div>
+              )}
+
+              {/* Presets Gallery */}
+              <div className="pt-2 border-t border-club-850">
+                <p className="text-[10px] text-slate-400 font-semibold mb-2">
+                  Ou sélectionnez un avatar de la galerie :
+                </p>
+                <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                  {AVATAR_PRESETS.map((preset, idx) => {
+                    const isSelected = avatar === preset;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setAvatar(preset)}
+                        className={`relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border-2 transition active:scale-95 ${
+                          isSelected
+                            ? 'border-drop-pink ring-2 ring-drop-pink/40 scale-105'
+                            : 'border-club-800 opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={preset} alt="Preset" className="w-full h-full object-cover" />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-drop-pink/35 flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white drop-shadow" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">Votre Prénom ou Nom</label>
