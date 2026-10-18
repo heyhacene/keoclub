@@ -10,6 +10,7 @@ interface NavbarProps {
   onOpenSearch: () => void;
   onOpenSettings: () => void;
   onNavigateToDrops: () => void;
+  onOpenAuth: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -18,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSearch,
   onOpenSettings,
   onNavigateToDrops,
+  onOpenAuth,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-club-950/80 backdrop-blur-xl border-b border-club-800/80 px-4 py-3 sm:px-6">
@@ -92,19 +94,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* Profile / Settings Button */}
+          {/* Profile / Auth Button */}
           <button
             type="button"
-            onClick={onOpenSettings}
-            className="flex items-center space-x-2 p-1.5 bg-club-900 hover:bg-club-850 border border-club-800 rounded-xl transition active:scale-95"
-            title="Paramètres & Profil"
+            onClick={onOpenAuth}
+            className="flex items-center space-x-1.5 py-1 px-2.5 bg-club-900 hover:bg-club-850 border border-club-800 rounded-xl transition active:scale-95 text-xs"
+            title="Mon Profil / Changer de compte"
           >
             <img
               src={user.avatar}
               alt={user.name}
-              className="w-6 h-6 rounded-lg object-cover ring-1 ring-keo-500/50"
+              className="w-5 h-5 rounded-full object-cover ring-1 ring-drop-pink"
             />
-            <Settings className="w-4 h-4 text-slate-400 mr-1 hidden sm:block" />
+            <span className="font-bold text-white font-mono hidden sm:inline max-w-[80px] truncate">
+              {user.handle}
+            </span>
+          </button>
+
+          {/* Settings Gear */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="p-2 text-slate-400 hover:text-white bg-club-900 border border-club-800 rounded-xl transition active:scale-95"
+            title="Paramètres de l'application"
+          >
+            <Settings className="w-4 h-4" />
           </button>
         </div>
       </div>

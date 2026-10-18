@@ -6,7 +6,7 @@ export interface LatestApkRelease {
   sizeBytes: number;
 }
 
-export const DEFAULT_KEOCLUB_BUILD = process.env.NEXT_PUBLIC_BUILD_NUMBER || '2';
+export const DEFAULT_KEOCLUB_BUILD = process.env.NEXT_PUBLIC_BUILD_NUMBER || '3';
 
 export function getDirectKeoClubApkUrl(buildNumber: string = DEFAULT_KEOCLUB_BUILD): string {
   return `https://github.com/heyhacene/keoclub/releases/download/v1.0.0-build.${buildNumber}/KeoClub-Build-${buildNumber}.apk`;

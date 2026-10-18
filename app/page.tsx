@@ -54,6 +54,8 @@ import { DropModal } from '@/components/DropModal';
 import { SearchDiscoveryModal } from '@/components/SearchDiscoveryModal';
 import { AudioPlayerDrawer } from '@/components/AudioPlayerDrawer';
 import { SettingsModal } from '@/components/SettingsModal';
+import { AuthModal } from '@/components/AuthModal';
+import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
   const [currentTab, setCurrentTab] = useState<MainTab>('drops');
@@ -75,6 +77,7 @@ export default function KeoClubHome() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // État lecteur audio flottant
   const [activeAudio, setActiveAudio] = useState<{
@@ -181,6 +184,7 @@ export default function KeoClubHome() {
     };
 
     setDrops((prev) => [newDrop, ...prev]);
+    pushDropToCloud(newDrop).catch(() => {});
 
     // Incrémenter le compteur de drops de l'ami
     if (friend) {
@@ -221,18 +225,32 @@ export default function KeoClubHome() {
     );
   };
 
-  // 7. Action : Ajouter un ami par son code ou pseudo
-  const handleAddFriend = (e: React.FormEvent) => {
+  // 7. Action : Ajouter un ami par son code ou pseudo (Cloud + local)
+  const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = friendCodeInput.trim();
     if (!clean) return;
+
+    try {
+      const cloudResults = await searchFriendsInCloud(clean);
+      if (cloudResults.length > 0) {
+        const found = cloudResults[0];
+        if (!friends.some((f) => f.id === found.id || f.handle.toLowerCase() === found.handle.toLowerCase())) {
+          setFriends((prev) => [found, ...prev]);
+          setFriendCodeInput('');
+          setAddFriendFeedback(`Ami ${found.name} (${found.handle}) ajouté au cercle !`);
+          setTimeout(() => setAddFriendFeedback(null), 3000);
+          return;
+        }
+      }
+    } catch {}
 
     const pseudo = clean.startsWith('@') ? clean : `@${clean.toLowerCase()}`;
     const newFriend: Friend = {
       id: `friend-${Date.now()}`,
       name: clean.replace('@', ''),
       handle: pseudo,
-      avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 1000000)}?w=200&q=80`,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${clean}`,
       bio: 'Membre du Cercle KeoClub.',
       favoriteGenres: ['Cinéma', 'Musique'],
       dropsCount: 0,
@@ -243,6 +261,22 @@ export default function KeoClubHome() {
     setFriendCodeInput('');
     setAddFriendFeedback(`Ami ${newFriend.name} ajouté au cercle !`);
     setTimeout(() => setAddFriendFeedback(null), 3000);
+  };
+
+  const handleLoginSuccess = (loggedUser: UserProfile) => {
+    setUser(loggedUser);
+    saveUserProfile(loggedUser);
+    pullDropsFromCloud(loggedUser.id)
+      .then((cloudDrops) => {
+        if (cloudDrops && cloudDrops.length > 0) {
+          setDrops((prev) => {
+            const ids = new Set(prev.map((d) => d.id));
+            const toAdd = cloudDrops.filter((d) => !ids.has(d.id));
+            return [...toAdd, ...prev];
+          });
+        }
+      })
+      .catch(() => {});
   };
 
   // 8. Filtrage de Ma Liste
@@ -286,6 +320,7 @@ export default function KeoClubHome() {
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onNavigateToDrops={() => setCurrentTab('drops')}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
 
       {/* 2. MAIN CONTAINER */}
@@ -295,6 +330,34 @@ export default function KeoClubHome() {
         {/* ============================================================== */}
         {currentTab === 'drops' && (
           <div className="space-y-6">
+            {/* Bannière Profil & Code Ami */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-keo-600/15 via-drop-pink/15 to-transparent border border-club-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-3">
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-2xl object-cover ring-2 ring-drop-pink shrink-0"
+                />
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-extrabold text-sm text-white">{user.name}</span>
+                    <span className="text-xs font-mono font-bold text-drop-pink">{user.handle}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Code Ami : <strong className="text-white font-mono">{user.shareCode}</strong> • Donnez votre pseudo ou ce code à vos amis pour échanger des Drops !
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAuthOpen(true)}
+                className="py-1.5 px-3 bg-club-800 hover:bg-club-700 text-slate-200 text-xs font-bold rounded-xl transition border border-club-700 shrink-0 self-start sm:self-auto"
+              >
+                Changer de compte
+              </button>
+            </div>
+
             {/* Header Drops */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -880,8 +943,16 @@ export default function KeoClubHome() {
           setUser(u);
           saveUserProfile(u);
         }}
+        onOpenAuth={() => setIsAuthOpen(true)}
         totalSavedItems={personalList.length}
         totalDrops={drops.length}
+      />
+
+      {/* Auth Modal (Pseudo + PIN) */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
     </div>
   );

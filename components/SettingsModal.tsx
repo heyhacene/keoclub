@@ -11,6 +11,7 @@ interface SettingsModalProps {
   onClose: () => void;
   user: UserProfile;
   onSaveUser: (user: UserProfile) => void;
+  onOpenAuth?: () => void;
   totalSavedItems: number;
   totalDrops: number;
 }
@@ -20,6 +21,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   user,
   onSaveUser,
+  onOpenAuth,
   totalSavedItems,
   totalDrops,
 }) => {
@@ -240,6 +242,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <p className="text-[10px] text-slate-400 font-semibold uppercase">Drops partagés</p>
             </div>
           </div>
+
+          {onOpenAuth && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenAuth();
+              }}
+              className="w-full py-2.5 px-4 bg-club-800 hover:bg-club-700 text-slate-300 hover:text-white rounded-2xl text-xs font-bold transition border border-club-700"
+            >
+              Changer de compte / Me reconnecter
+            </button>
+          )}
 
           <button
             type="submit"
