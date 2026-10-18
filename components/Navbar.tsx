@@ -105,6 +105,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               src={user.avatar}
               alt={user.name}
               className="w-5 h-5 rounded-full object-cover ring-1 ring-drop-pink"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=Hacene';
+              }}
             />
             <span className="font-bold text-white font-mono hidden sm:inline max-w-[80px] truncate">
               {user.handle}

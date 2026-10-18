@@ -16,11 +16,12 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { UserProfile } from '@/types/culture';
 import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
 import { getDirectKeoClubApkUrl, DEFAULT_KEOCLUB_BUILD, fetchLatestKeoClubApk } from '@/lib/apkUpdate';
-import { AVATAR_PRESETS, processImageFileToAvatar } from '@/lib/imageUtils';
+import { AVATAR_PRESETS, processImageFileToAvatar, generateRandomAvatarUrl } from '@/lib/imageUtils';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -54,18 +55,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setName(user.name);
       setHandle(user.handle);
       setBio(user.bio);
-      setAvatar(user.avatar);
+      const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem('keoclub_user_avatar_v1') : null;
+      setAvatar(savedAvatar || user.avatar);
       setTmdbKey(getTmdbApiKey());
       setAvatarError(null);
       setSaveSuccessMsg(null);
     }
-  }, [isOpen, user]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -78,11 +81,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   /**
-   * Sauvegarde instantanée dès qu'un avatar est choisi ou téléversé
+   * Sauvegarde instantanée dès qu'un avatar est choisi, téléversé ou généré
    */
   const applyAndSaveAvatar = (newAvatarUrl: string, message: string = 'Avatar mis à jour et enregistré !') => {
     setAvatar(newAvatarUrl);
     setAvatarError(null);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('keoclub_user_avatar_v1', newAvatarUrl);
+      }
+    } catch {}
+
     const updatedUser: UserProfile = {
       ...user,
       avatar: newAvatarUrl,
@@ -92,11 +101,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
     onSaveUser(updatedUser);
     setSaveSuccessMsg(message);
-    setTimeout(() => setSaveSuccessMsg(null), 3000);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
   const handleSelectPreset = (preset: string) => {
     applyAndSaveAvatar(preset, '✓ Avatar enregistré avec succès !');
+  };
+
+  const handleGenerateRandomAvatar = () => {
+    const randomUrl = generateRandomAvatarUrl();
+    applyAndSaveAvatar(randomUrl, '✓ Nouvel avatar généré et enregistré !');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,15 +120,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsProcessingAvatar(true);
     setAvatarError(null);
     try {
-      const processedUrl = await processImageFileToAvatar(file, 256, 0.85);
+      const processedUrl = await processImageFileToAvatar(file, 256, 0.82);
       applyAndSaveAvatar(processedUrl, '✓ Photo de profil importée et enregistrée !');
     } catch (err: any) {
       setAvatarError(err?.message || 'Erreur lors du chargement de l\'image.');
     } finally {
       setIsProcessingAvatar(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
@@ -123,9 +136,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
    */
   const handleSaveAndClose = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    const storedAvatar = typeof window !== 'undefined' ? localStorage.getItem('keoclub_user_avatar_v1') : null;
+    const finalAvatar = avatar || storedAvatar || user.avatar;
+
+    try {
+      if (typeof window !== 'undefined' && finalAvatar) {
+        localStorage.setItem('keoclub_user_avatar_v1', finalAvatar);
+      }
+    } catch {}
+
     onSaveUser({
       ...user,
-      avatar: avatar || user.avatar,
+      avatar: finalAvatar,
       name: name.trim() || user.name,
       handle: handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`,
       bio: bio.trim(),
@@ -230,6 +252,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     src={avatar}
                     alt={name}
                     className="w-full h-full object-cover transition group-hover:scale-105"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=KeoFallback';
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/45 group-hover:bg-black/60 transition flex flex-col items-center justify-center text-white opacity-90 group-hover:opacity-100">
                     {isProcessingAvatar ? (
@@ -243,7 +268,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Upload from device button */}
+                {/* Upload & Actions */}
                 <div className="flex-1 space-y-2">
                   <input
                     ref={fileInputRef}
@@ -252,18 +277,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={handleFileUpload}
                     className="hidden"
                   />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingAvatar}
+                      className="py-2 px-2.5 bg-club-800 hover:bg-club-700 text-white rounded-xl text-[11px] font-bold transition flex items-center justify-center space-x-1.5 border border-club-700 shadow-sm active:scale-95 disabled:opacity-50"
+                      title="Choisir une image dans vos dossiers ou votre galerie"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-drop-pink shrink-0" />
+                      <span className="truncate">Mes fichiers</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      disabled={isProcessingAvatar}
+                      className="py-2 px-2.5 bg-club-800 hover:bg-club-700 text-white rounded-xl text-[11px] font-bold transition flex items-center justify-center space-x-1.5 border border-club-700 shadow-sm active:scale-95 disabled:opacity-50"
+                      title="Prendre une photo directement avec l'appareil photo"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">Photo / Caméra</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isProcessingAvatar}
-                    className="w-full py-2.5 px-3 bg-club-800 hover:bg-club-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 border border-club-700 shadow-sm active:scale-95 disabled:opacity-50"
+                    onClick={handleGenerateRandomAvatar}
+                    className="w-full py-1.5 px-2 bg-gradient-to-r from-keo-600/20 via-drop-pink/20 to-amber-500/15 hover:from-keo-600/30 hover:to-drop-pink/30 text-white rounded-xl text-[11px] font-bold transition flex items-center justify-center space-x-1.5 border border-keo-500/30 active:scale-95"
                   >
-                    <Upload className="w-3.5 h-3.5 text-drop-pink" />
-                    <span>Choisir une photo dans mes fichiers</span>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>Générer un avatar original</span>
                   </button>
-                  <p className="text-[10px] text-slate-400 leading-tight">
-                    Prenez une photo ou choisissez une image depuis votre galerie. L'avatar est immédiatement enregistré.
-                  </p>
                 </div>
               </div>
 
@@ -285,7 +339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Presets Gallery */}
               <div className="pt-2 border-t border-club-850">
                 <p className="text-[10px] text-slate-400 font-semibold mb-2">
-                  Ou touchez un avatar pour le sélectionner directement :
+                  Ou touchez un avatar pour l'appliquer immédiatement :
                 </p>
                 <div className="flex items-center space-x-2.5 overflow-x-auto pb-1.5 scrollbar-none">
                   {AVATAR_PRESETS.map((preset, idx) => {
@@ -302,7 +356,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }`}
                         title="Sélectionner cet avatar"
                       >
-                        <img src={preset} alt="Preset" className="w-full h-full object-cover" />
+                        <img
+                          src={preset}
+                          alt="Preset"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=preset${idx}`;
+                          }}
+                        />
                         {isSelected && (
                           <div className="absolute inset-0 bg-drop-pink/35 flex items-center justify-center">
                             <Check className="w-4 h-4 text-white drop-shadow" />

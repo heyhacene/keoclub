@@ -62,6 +62,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { AuthModal } from '@/components/AuthModal';
 import { CulturalShowcaseModal } from '@/components/CulturalShowcaseModal';
 import { TopPicksEditorModal } from '@/components/TopPicksEditorModal';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
@@ -277,6 +278,11 @@ export default function KeoClubHome() {
   const handleLoginSuccess = (loggedUser: UserProfile) => {
     setUser(loggedUser);
     saveUserProfile(loggedUser);
+    try {
+      if (loggedUser.avatar) {
+        localStorage.setItem('keoclub_user_avatar_v1', loggedUser.avatar);
+      }
+    } catch {}
     pullDropsFromCloud(loggedUser.id)
       .then((cloudDrops) => {
         if (cloudDrops && cloudDrops.length > 0) {
@@ -297,7 +303,48 @@ export default function KeoClubHome() {
     };
     setUser({ ...updated });
     saveUserProfile(updated);
+    try {
+      if (updated.avatar) {
+        localStorage.setItem('keoclub_user_avatar_v1', updated.avatar);
+      }
+    } catch {}
     updateUserInCloud(updated).catch(() => {});
+  };
+
+  /**
+   * Action de rafraîchissement au tirage vers le bas (Pull-to-refresh)
+   */
+  const handleRefreshApp = async () => {
+    const freshUser = loadUserProfile();
+    const freshDrops = loadDrops();
+    const freshList = loadPersonalList();
+    const freshFriends = loadFriends();
+
+    setUser(freshUser);
+    setPersonalList(freshList);
+    setDrops(freshDrops);
+    setFriends(freshFriends);
+
+    try {
+      if (freshUser.id) {
+        const cloudDrops = await pullDropsFromCloud(freshUser.id);
+        if (cloudDrops && cloudDrops.length > 0) {
+          setDrops((prev) => {
+            const ids = new Set(prev.map((d) => d.id));
+            const toAdd = cloudDrops.filter((d) => !ids.has(d.id));
+            const merged = [...toAdd, ...prev];
+            saveDrops(merged);
+            return merged;
+          });
+        }
+      }
+    } catch {}
+
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(15);
+      } catch {}
+    }
   };
 
   const handleShareMyTop = () => {
@@ -460,23 +507,27 @@ export default function KeoClubHome() {
         onOpenAuth={() => setIsAuthOpen(true)}
       />
 
-      {/* 2. MAIN CONTAINER */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-5">
-        {/* ============================================================== */}
-        {/* TAB 1: DROPS (INBOX & RECOMMANDATIONS REÇUES)                 */}
-        {/* ============================================================== */}
-        {currentTab === 'drops' && (
-          <div className="space-y-6">
-            {/* Bannière Profil & Code Ami */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-keo-600/15 via-drop-pink/15 to-transparent border border-club-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center space-x-3">
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="w-10 h-10 rounded-2xl object-cover ring-2 ring-drop-pink shrink-0 cursor-pointer hover:ring-keo-400 active:scale-95 transition"
-                  title="Modifier mon avatar et profil"
-                />
+      {/* 2. MAIN CONTAINER WITH PULL-TO-REFRESH */}
+      <PullToRefresh onRefresh={handleRefreshApp}>
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-5">
+          {/* ============================================================== */}
+          {/* TAB 1: DROPS (INBOX & RECOMMANDATIONS REÇUES)                 */}
+          {/* ============================================================== */}
+          {currentTab === 'drops' && (
+            <div className="space-y-6">
+              {/* Bannière Profil & Code Ami */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-keo-600/15 via-drop-pink/15 to-transparent border border-club-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="w-10 h-10 rounded-2xl object-cover ring-2 ring-drop-pink shrink-0 cursor-pointer hover:ring-keo-400 active:scale-95 transition"
+                    title="Modifier mon avatar et profil"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=Hacene';
+                    }}
+                  />
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="font-extrabold text-sm text-white">{user.name}</span>
@@ -909,6 +960,9 @@ export default function KeoClubHome() {
                   alt={user.name}
                   onClick={() => setIsSettingsOpen(true)}
                   className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400 shadow-md cursor-pointer hover:scale-105 transition"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=Hacene';
+                  }}
                 />
                 <div>
                   <div className="flex items-center space-x-2">
@@ -1210,6 +1264,7 @@ export default function KeoClubHome() {
           </div>
         )}
       </main>
+      </PullToRefresh>
 
       {/* 3. FLOATING MINI AUDIO PLAYER */}
       <AudioPlayerDrawer
@@ -1291,6 +1346,11 @@ export default function KeoClubHome() {
           const fresh = { ...u };
           setUser(fresh);
           saveUserProfile(fresh);
+          try {
+            if (fresh.avatar) {
+              localStorage.setItem('keoclub_user_avatar_v1', fresh.avatar);
+            }
+          } catch {}
           updateUserInCloud(fresh).catch(() => {});
         }}
         onOpenAuth={() => setIsAuthOpen(true)}

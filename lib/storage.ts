@@ -292,28 +292,49 @@ export function saveFriends(friends: Friend[]): void {
   }
 }
 
+const AVATAR_KEY = 'keoclub_user_avatar_v1';
+
 export function loadUserProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_USER;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    const savedAvatar = localStorage.getItem(AVATAR_KEY);
+
     if (!raw) {
-      saveUserProfile(DEFAULT_USER);
-      return DEFAULT_USER;
+      const initial: UserProfile = { ...DEFAULT_USER };
+      if (savedAvatar && savedAvatar.trim()) {
+        initial.avatar = savedAvatar.trim();
+      }
+      saveUserProfile(initial);
+      return initial;
     }
     const parsed: UserProfile = JSON.parse(raw);
+    if (savedAvatar && savedAvatar.trim()) {
+      parsed.avatar = savedAvatar.trim();
+    }
     if (!parsed.topPicks) {
       parsed.topPicks = DEFAULT_USER.topPicks;
       saveUserProfile(parsed);
     }
     return parsed;
   } catch {
-    return DEFAULT_USER;
+    const fallback: UserProfile = { ...DEFAULT_USER };
+    try {
+      const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem(AVATAR_KEY) : null;
+      if (savedAvatar && savedAvatar.trim()) {
+        fallback.avatar = savedAvatar.trim();
+      }
+    } catch {}
+    return fallback;
   }
 }
 
 export function saveUserProfile(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   try {
+    if (user.avatar && user.avatar.trim()) {
+      localStorage.setItem(AVATAR_KEY, user.avatar.trim());
+    }
     localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
   } catch (e) {
     console.error('saveUserProfile error', e);

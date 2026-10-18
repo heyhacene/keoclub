@@ -82,6 +82,16 @@ jobs:
       - name: Synchronisation Capacitor Android
         run: npx cap sync android
 
+      - name: Configuration des permissions Android (Caméra & Galerie Photos)
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ]; then
+            echo "Ajout des permissions Caméra et Galerie dans AndroidManifest.xml..."
+            if ! grep -q "android.permission.CAMERA" "$MANIFEST"; then
+              sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />' "$MANIFEST"
+            fi
+          fi
+
       - name: Configuration de la version Android (versionCode & versionName)
         run: |
           sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/g' android/app/build.gradle
