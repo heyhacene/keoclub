@@ -6,7 +6,6 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https',
-    hostname: 'keoclub.app',
     cleartext: true,
   },
 };

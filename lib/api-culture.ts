@@ -1,11 +1,12 @@
 import { MediaItem, MediaType } from '@/types/culture';
+import { STORAGE_KEYS, syncStorageGet, syncStorageSet } from './persistentStorage';
 
 // Clé publique TMDB par défaut (avec fallback automatique si indisponible)
 const DEFAULT_TMDB_API_KEY = '8265bd1679663a7ea12ac168da84d2e8';
 
 export function getTmdbApiKey(): string {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('keoclub_tmdb_api_key');
+    const saved = syncStorageGet(STORAGE_KEYS.TMDB_KEY);
     if (saved && saved.trim()) return saved.trim();
   }
   return DEFAULT_TMDB_API_KEY;
@@ -13,7 +14,7 @@ export function getTmdbApiKey(): string {
 
 export function saveTmdbApiKey(key: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('keoclub_tmdb_api_key', key.trim());
+    syncStorageSet(STORAGE_KEYS.TMDB_KEY, key.trim());
   }
 }
 

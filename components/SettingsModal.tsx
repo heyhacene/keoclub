@@ -22,7 +22,7 @@ import { UserProfile } from '@/types/culture';
 import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
 import { getDirectKeoClubApkUrl, DEFAULT_KEOCLUB_BUILD, fetchLatestKeoClubApk } from '@/lib/apkUpdate';
 import { AVATAR_PRESETS, processImageFileToAvatar, generateRandomAvatarUrl } from '@/lib/imageUtils';
-import { STORAGE_KEYS, persistCustomAvatar } from '@/lib/persistentStorage';
+import { STORAGE_KEYS, persistCustomAvatar, getCustomAvatarSync } from '@/lib/persistentStorage';
 import { UserAvatar } from './UserAvatar';
 
 interface SettingsModalProps {
@@ -64,11 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setName(user.name);
       setHandle(user.handle);
       setBio(user.bio);
-      const savedAvatar =
-        typeof window !== 'undefined'
-          ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
-            localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR)
-          : null;
+      const savedAvatar = getCustomAvatarSync();
       setAvatar(savedAvatar || user.avatar);
       setTmdbKey(getTmdbApiKey());
       setAvatarError(null);
@@ -138,11 +134,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
    */
   const handleSaveAndClose = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const storedAvatar =
-      typeof window !== 'undefined'
-        ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
-          localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR)
-        : null;
+    const storedAvatar = getCustomAvatarSync();
     const finalAvatar = avatar || storedAvatar || user.avatar;
 
     if (finalAvatar) {

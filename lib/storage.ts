@@ -1,6 +1,6 @@
 import { PersonalItem, DropItem, Friend, UserProfile, MediaItem, PersonalItemStatus, UserTopPicks } from '@/types/culture';
 import { TRENDING_SUGGESTIONS } from './api-culture';
-import { STORAGE_KEYS, persistCustomAvatar, idbSet } from './persistentStorage';
+import { STORAGE_KEYS, persistCustomAvatar, idbSet, syncStorageGet, syncStorageSet, getCustomAvatarSync } from './persistentStorage';
 
 // Profil utilisateur par défaut avec Top Culturel
 export const DEFAULT_USER: UserProfile = {
@@ -210,7 +210,7 @@ export const DEFAULT_PERSONAL_LIST: PersonalItem[] = [
 export function loadPersonalList(): PersonalItem[] {
   if (typeof window === 'undefined') return DEFAULT_PERSONAL_LIST;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PERSONAL_LIST);
+    const raw = syncStorageGet(STORAGE_KEYS.PERSONAL_LIST);
     if (!raw) {
       savePersonalList(DEFAULT_PERSONAL_LIST);
       return DEFAULT_PERSONAL_LIST;
@@ -224,7 +224,7 @@ export function loadPersonalList(): PersonalItem[] {
 export function savePersonalList(list: PersonalItem[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEYS.PERSONAL_LIST, JSON.stringify(list));
+    syncStorageSet(STORAGE_KEYS.PERSONAL_LIST, JSON.stringify(list));
   } catch (e) {
     console.error('savePersonalList error', e);
   }
@@ -233,7 +233,7 @@ export function savePersonalList(list: PersonalItem[]): void {
 export function loadDrops(): DropItem[] {
   if (typeof window === 'undefined') return DEFAULT_DROPS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.DROPS_INBOX);
+    const raw = syncStorageGet(STORAGE_KEYS.DROPS_INBOX);
     if (!raw) {
       saveDrops(DEFAULT_DROPS);
       return DEFAULT_DROPS;
@@ -247,7 +247,7 @@ export function loadDrops(): DropItem[] {
 export function saveDrops(drops: DropItem[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEYS.DROPS_INBOX, JSON.stringify(drops));
+    syncStorageSet(STORAGE_KEYS.DROPS_INBOX, JSON.stringify(drops));
   } catch (e) {
     console.error('saveDrops error', e);
   }
@@ -256,7 +256,7 @@ export function saveDrops(drops: DropItem[]): void {
 export function loadFriends(): Friend[] {
   if (typeof window === 'undefined') return DEFAULT_FRIENDS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.FRIENDS);
+    const raw = syncStorageGet(STORAGE_KEYS.FRIENDS);
     if (!raw) {
       saveFriends(DEFAULT_FRIENDS);
       return DEFAULT_FRIENDS;
@@ -280,7 +280,7 @@ export function loadFriends(): Friend[] {
 export function saveFriends(friends: Friend[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
+    syncStorageSet(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
   } catch (e) {
     console.error('saveFriends error', e);
   }
@@ -289,35 +289,29 @@ export function saveFriends(friends: Friend[]): void {
 export function loadUserProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_USER;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    const customAvatar =
-      localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
-      localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR);
+    const raw = syncStorageGet(STORAGE_KEYS.USER_PROFILE);
+    const customAvatar = getCustomAvatarSync();
 
     if (!raw) {
       return {
         ...DEFAULT_USER,
-        ...(customAvatar && customAvatar.trim() ? { avatar: customAvatar.trim() } : {}),
+        ...(customAvatar ? { avatar: customAvatar } : {}),
       };
     }
 
     const parsed: UserProfile = JSON.parse(raw);
-    if (customAvatar && customAvatar.trim()) {
-      parsed.avatar = customAvatar.trim();
+    if (customAvatar) {
+      parsed.avatar = customAvatar;
     }
     if (!parsed.topPicks) {
       parsed.topPicks = DEFAULT_USER.topPicks;
     }
     return parsed;
   } catch {
-    const customAvatar =
-      typeof window !== 'undefined'
-        ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
-          localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR)
-        : null;
+    const customAvatar = getCustomAvatarSync();
     return {
       ...DEFAULT_USER,
-      ...(customAvatar && customAvatar.trim() ? { avatar: customAvatar.trim() } : {}),
+      ...(customAvatar ? { avatar: customAvatar } : {}),
     };
   }
 }
@@ -325,11 +319,28 @@ export function loadUserProfile(): UserProfile {
 export function saveUserProfile(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   try {
-    if (user.avatar && user.avatar.trim()) {
-      persistCustomAvatar(user.avatar.trim());
+    // S'assurer qu'un appel à saveUserProfile avec l'avatar par défaut n'écrase JAMAIS un avatar personnalisé déjà enregistré
+    const existingCustomAvatar = getCustomAvatarSync();
+    const userHasCustomAvatar =
+      user.avatar &&
+      user.avatar.trim() &&
+      user.avatar.trim() !== DEFAULT_USER.avatar;
+
+    const finalAvatar = userHasCustomAvatar
+      ? user.avatar.trim()
+      : existingCustomAvatar || user.avatar || DEFAULT_USER.avatar;
+
+    const finalUser: UserProfile = {
+      ...user,
+      avatar: finalAvatar,
+    };
+
+    if (finalAvatar && finalAvatar !== DEFAULT_USER.avatar) {
+      persistCustomAvatar(finalAvatar);
     }
-    localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
-    idbSet(STORAGE_KEYS.USER_PROFILE, user).catch(() => {});
+
+    syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(finalUser));
+    idbSet(STORAGE_KEYS.USER_PROFILE, finalUser).catch(() => {});
   } catch (e) {
     console.error('saveUserProfile error', e);
   }

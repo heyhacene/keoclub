@@ -110,7 +110,7 @@ export default function KeoClubHome() {
   const [addFriendFeedback, setAddFriendFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Chargement synchrone immédiat (depuis LocalStorage)
+    // 1. Chargement synchrone immédiat (depuis AndroidNativeStorage + LocalStorage)
     setPersonalList(loadPersonalList());
     setDrops(loadDrops());
     setFriends(loadFriends());
@@ -118,28 +118,22 @@ export default function KeoClubHome() {
     setUser(initialUser);
     setIsLoaded(true);
 
-    // 2. Restauration asynchrone indestructible (IndexedDB SQLite & SharedPreferences)
+    // 2. Restauration asynchrone complémentaire (IndexedDB SQLite & SharedPreferences)
     restorePersistentState().then(({ customAvatar, userProfile }) => {
-      if (customAvatar && customAvatar.trim()) {
-        const clean = customAvatar.trim();
+      const cleanAvatar = customAvatar && customAvatar.trim() ? customAvatar.trim() : null;
+
+      if (cleanAvatar || userProfile) {
         setUser((prev) => {
-          if (prev.avatar !== clean) {
-            return { ...prev, avatar: clean };
-          }
-          return prev;
-        });
-      } else if (userProfile) {
-        setUser((prev) => {
-          // Ne jamais écraser un avatar utilisateur existant avec DEFAULT_USER.avatar
+          const merged = userProfile ? { ...prev, ...userProfile } : { ...prev };
           const isCurrentDefault = !prev.avatar || prev.avatar === DEFAULT_USER.avatar;
-          const isStoredDefault = !userProfile.avatar || userProfile.avatar === DEFAULT_USER.avatar;
-          const finalAvatar = !isStoredDefault
-            ? userProfile.avatar
-            : (!isCurrentDefault ? prev.avatar : userProfile.avatar);
+          const isProfileDefault = !merged.avatar || merged.avatar === DEFAULT_USER.avatar;
+
+          const finalAvatar =
+            cleanAvatar ||
+            (!isProfileDefault ? merged.avatar : !isCurrentDefault ? prev.avatar : DEFAULT_USER.avatar);
 
           return {
-            ...prev,
-            ...userProfile,
+            ...merged,
             avatar: finalAvatar,
           };
         });

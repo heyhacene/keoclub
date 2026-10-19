@@ -1,9 +1,10 @@
 /**
  * Multi-layer persistent storage engine for KeoClub.
  * Combines:
- * 1. Synchronous LocalStorage (for instant UI render without flash)
- * 2. SQLite-backed IndexedDB (indestructible across Android WebView process kills)
- * 3. Capacitor Native Preferences (Android SharedPreferences)
+ * 1. AndroidNativeStorage (@JavascriptInterface backed by synchronous SharedPreferences.Editor.commit())
+ *    -> 100% synchronous on Android WebView, survives force-stop, swipe-away, cache clear, and origin changes.
+ * 2. Synchronous LocalStorage (for web browsers and instant UI render)
+ * 3. SQLite-backed IndexedDB (as additional async backup)
  */
 
 import { UserProfile } from '@/types/culture';
@@ -20,6 +21,93 @@ export const STORAGE_KEYS = {
   LEGACY_AVATAR: 'keoclub_user_avatar_v1',
   TMDB_KEY: 'keoclub_tmdb_api_key',
 };
+
+// ============================================================================
+// 0. SYNCHRONOUS ANDROID NATIVE BRIDGE + LOCALSTORAGE (Instant & Indestructible)
+// ============================================================================
+
+interface AndroidNativeStorageBridge {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => boolean;
+  removeItem: (key: string) => boolean;
+}
+
+function getAndroidBridge(): AndroidNativeStorageBridge | null {
+  if (typeof window === 'undefined') return null;
+  const bridge = (window as any).AndroidNativeStorage;
+  if (bridge && typeof bridge.getItem === 'function' && typeof bridge.setItem === 'function') {
+    return bridge as AndroidNativeStorageBridge;
+  }
+  return null;
+}
+
+/**
+ * Lit une clé de manière 100% SYNCHRONE :
+ * Priorité 1 : Coffre-fort natif Android (SharedPreferences sur disque OS)
+ * Priorité 2 : LocalStorage WebView
+ */
+export function syncStorageGet(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+
+  // 1. Lecture directe depuis les SharedPreferences natives Android (synchrone)
+  try {
+    const bridge = getAndroidBridge();
+    if (bridge) {
+      const nativeVal = bridge.getItem(key);
+      if (nativeVal !== null && nativeVal !== undefined && nativeVal !== '') {
+        // Re-synchroniser silencieusement LocalStorage si besoin
+        try {
+          localStorage.setItem(key, nativeVal);
+        } catch {}
+        return nativeVal;
+      }
+    }
+  } catch {}
+
+  // 2. Fallback LocalStorage
+  try {
+    const localVal = localStorage.getItem(key);
+    if (localVal !== null && localVal !== undefined && localVal !== '') {
+      // Si présent en LocalStorage mais pas encore dans le pont natif, on le copie
+      try {
+        const bridge = getAndroidBridge();
+        if (bridge) {
+          bridge.setItem(key, localVal);
+        }
+      } catch {}
+      return localVal;
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Écrit une clé de manière 100% SYNCHRONE :
+ * 1. Écrit et commit() immédiatement sur la mémoire flash Android (SharedPreferences XML)
+ * 2. Écrit dans LocalStorage
+ * 3. Sauvegarde en tâche de fond dans IndexedDB
+ */
+export function syncStorageSet(key: string, value: string): void {
+  if (typeof window === 'undefined') return;
+
+  // 1. Écriture synchrone avec commit() immédiat sur disque Android
+  try {
+    const bridge = getAndroidBridge();
+    if (bridge) {
+      bridge.setItem(key, value);
+    }
+  } catch (e) {
+    console.warn('AndroidNativeStorage setItem error:', e);
+  }
+
+  // 2. Écriture synchrone LocalStorage
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn('localStorage setItem error:', e);
+  }
+}
 
 // ============================================================================
 // 1. INDEXEDDB ENGINE (Backed by SQLite on Android)
@@ -83,7 +171,7 @@ export async function idbSet(key: string, value: any): Promise<boolean> {
 }
 
 // ============================================================================
-// 2. CAPACITOR NATIVE PREFERENCES BRIDGE (SharedPreferences XML on Android)
+// 2. CAPACITOR NATIVE PREFERENCES BRIDGE (Optional Fallback)
 // ============================================================================
 
 async function nativePrefGet(key: string): Promise<string | null> {
@@ -111,77 +199,89 @@ async function nativePrefSet(key: string, value: string): Promise<void> {
 // ============================================================================
 
 /**
- * Enregistre l'avatar personnalisé dans tous les niveaux de stockage :
- * LocalStorage (clé principale + clé legacy) + IndexedDB + Capacitor Preferences.
- * Met également à jour le profil stocké en mémoire pour éviter toute divergence.
+ * Récupère l'avatar personnalisé de manière 100% SYNCHRONE
+ * depuis AndroidNativeStorage ou LocalStorage.
+ */
+export function getCustomAvatarSync(): string | null {
+  if (typeof window === 'undefined') return null;
+  const val =
+    syncStorageGet(STORAGE_KEYS.CUSTOM_AVATAR) ||
+    syncStorageGet(STORAGE_KEYS.LEGACY_AVATAR);
+  return val && val.trim() ? val.trim() : null;
+}
+
+/**
+ * Enregistre l'avatar personnalisé dans TOUS les niveaux de stockage :
+ * 1. AndroidNativeStorage (SharedPreferences.Editor.commit() synchrone sur disque)
+ * 2. LocalStorage (clé principale + clé legacy)
+ * 3. Profil utilisateur en stockage natif + LocalStorage
+ * 4. IndexedDB + Capacitor Preferences
  */
 export async function persistCustomAvatar(avatarUrl: string): Promise<void> {
   if (typeof window === 'undefined' || !avatarUrl || !avatarUrl.trim()) return;
   const cleanUrl = avatarUrl.trim();
 
-  // 1. LocalStorage immédiat (double clé pour compatibilité 100%)
+  // 1. Écriture synchrone immédiate (Android SharedPreferences + LocalStorage)
+  syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl);
+  syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl);
+
+  // 2. Mettre à jour immédiatement l'avatar dans le profil sauvegardé
   try {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl);
-    localStorage.setItem(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl);
-
-    // Mettre à jour immédiatement l'avatar dans le profil en LocalStorage
-    const profileRaw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    const profileRaw = syncStorageGet(STORAGE_KEYS.USER_PROFILE);
     if (profileRaw) {
-      try {
-        const p: UserProfile = JSON.parse(profileRaw);
-        p.avatar = cleanUrl;
-        localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(p));
-        idbSet(STORAGE_KEYS.USER_PROFILE, p).catch(() => {});
-      } catch {}
+      const p: UserProfile = JSON.parse(profileRaw);
+      p.avatar = cleanUrl;
+      syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(p));
+      idbSet(STORAGE_KEYS.USER_PROFILE, p).catch(() => {});
     }
-  } catch (e) {
-    console.warn('LocalStorage error on custom avatar:', e);
-  }
+  } catch {}
 
-  // 2. IndexedDB persistant (SQLite)
+  // 3. IndexedDB persistant (SQLite)
   idbSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl).catch(() => {});
   idbSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl).catch(() => {});
 
-  // 3. Capacitor Native Preferences
+  // 4. Capacitor Native Preferences
   nativePrefSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl).catch(() => {});
   nativePrefSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl).catch(() => {});
 }
 
 /**
- * Restaure l'avatar personnalisé depuis n'importe quelle source disponible.
- * Ne renvoie JAMAIS l'avatar par défaut sauf si aucun avatar personnalisé n'a été défini.
+ * Restaure l'avatar personnalisé depuis n'importe quelle source disponible (Synchrone puis Asynchrone).
  */
 export async function restoreCustomAvatar(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
 
-  // 1. Vérifier LocalStorage (clé v1 principale puis clé legacy)
-  try {
-    const local = localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) || localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR);
-    if (local && local.trim()) return local.trim();
-  } catch {}
+  // 1. Vérifier le pont natif Android & LocalStorage (synchrone)
+  const syncVal = getCustomAvatarSync();
+  if (syncVal) {
+    // S'assurer que les deux clés sont bien synchronisées partout
+    syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, syncVal);
+    syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, syncVal);
+    return syncVal;
+  }
 
-  // 2. Vérifier IndexedDB (indestructible sur Android)
+  // 2. Vérifier IndexedDB (SQLite)
   try {
-    const idbVal = (await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR)) || (await idbGet<string>(STORAGE_KEYS.LEGACY_AVATAR));
+    const idbVal =
+      (await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR)) ||
+      (await idbGet<string>(STORAGE_KEYS.LEGACY_AVATAR));
     if (idbVal && idbVal.trim()) {
       const clean = idbVal.trim();
-      try {
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, clean);
-        localStorage.setItem(STORAGE_KEYS.LEGACY_AVATAR, clean);
-      } catch {}
+      syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, clean);
+      syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, clean);
       return clean;
     }
   } catch {}
 
   // 3. Vérifier Capacitor Preferences
   try {
-    const native = (await nativePrefGet(STORAGE_KEYS.CUSTOM_AVATAR)) || (await nativePrefGet(STORAGE_KEYS.LEGACY_AVATAR));
+    const native =
+      (await nativePrefGet(STORAGE_KEYS.CUSTOM_AVATAR)) ||
+      (await nativePrefGet(STORAGE_KEYS.LEGACY_AVATAR));
     if (native && native.trim()) {
       const clean = native.trim();
-      try {
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, clean);
-        localStorage.setItem(STORAGE_KEYS.LEGACY_AVATAR, clean);
-      } catch {}
+      syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, clean);
+      syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, clean);
       idbSet(STORAGE_KEYS.CUSTOM_AVATAR, clean).catch(() => {});
       return clean;
     }
@@ -192,7 +292,7 @@ export async function restoreCustomAvatar(): Promise<string | null> {
 
 /**
  * Restauration asynchrone complète au démarrage de l'app.
- * Récupère le profil et l'avatar personnalisé depuis SQLite / SharedPreferences.
+ * Récupère le profil et l'avatar personnalisé depuis SharedPreferences / SQLite.
  */
 export async function restorePersistentState(): Promise<{
   customAvatar: string | null;
@@ -201,23 +301,38 @@ export async function restorePersistentState(): Promise<{
   const customAvatar = await restoreCustomAvatar();
 
   let userProfile: UserProfile | null = null;
+
+  // 1. Essayer depuis le pont natif Android / LocalStorage
   try {
-    const idbProfile = await idbGet<UserProfile>(STORAGE_KEYS.USER_PROFILE);
-    if (idbProfile) {
-      userProfile = idbProfile;
+    const rawSync = syncStorageGet(STORAGE_KEYS.USER_PROFILE);
+    if (rawSync) {
+      userProfile = JSON.parse(rawSync);
     }
   } catch {}
 
+  // 2. Sinon essayer depuis IndexedDB
+  if (!userProfile) {
+    try {
+      const idbProfile = await idbGet<UserProfile>(STORAGE_KEYS.USER_PROFILE);
+      if (idbProfile) {
+        userProfile = idbProfile;
+        syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(idbProfile));
+      }
+    } catch {}
+  }
+
+  // 3. Sinon essayer Capacitor Preferences
   if (!userProfile) {
     try {
       const nativeRaw = await nativePrefGet(STORAGE_KEYS.USER_PROFILE);
       if (nativeRaw) {
         userProfile = JSON.parse(nativeRaw);
+        syncStorageSet(STORAGE_KEYS.USER_PROFILE, nativeRaw);
       }
     } catch {}
   }
 
-  // Si on a un avatar personnalisé restauré, on s'assure qu'il est synchronisé dans le profil
+  // Si on a un avatar personnalisé restauré, il est prioritaire à 100%
   if (customAvatar && userProfile) {
     userProfile.avatar = customAvatar;
   }
