@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Send, Sparkles, Check, Flame, MessageSquare } from 'lucide-react';
 import { MediaItem, Friend } from '@/types/culture';
+import { UserAvatar } from './UserAvatar';
 
 interface DropModalProps {
   media: MediaItem | null;
@@ -136,9 +137,9 @@ export const DropModal: React.FC<DropModalProps> = ({
                           : 'bg-club-950/60 border-club-800 text-slate-300 hover:border-club-700'
                       }`}
                     >
-                      <img
+                      <UserAvatar
                         src={f.avatar}
-                        alt={f.name}
+                        name={f.name}
                         className={`w-7 h-7 rounded-full object-cover shrink-0 ${isSelected ? 'ring-2 ring-drop-pink' : ''}`}
                       />
                       <div className="min-w-0 flex-1">

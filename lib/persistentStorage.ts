@@ -6,7 +6,7 @@
  * 3. Capacitor Native Preferences (Android SharedPreferences)
  */
 
-import { UserProfile, PersonalItem, DropItem, Friend } from '@/types/culture';
+import { UserProfile } from '@/types/culture';
 
 const DB_NAME = 'keoclub_vault_v1';
 const STORE_NAME = 'keyval';
@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   FRIENDS: 'keoclub_friends_v1',
   USER_PROFILE: 'keoclub_profile_v1',
   CUSTOM_AVATAR: 'keoclub_custom_avatar_v1',
+  LEGACY_AVATAR: 'keoclub_user_avatar_v1',
   TMDB_KEY: 'keoclub_tmdb_api_key',
 };
 
@@ -24,8 +25,12 @@ export const STORAGE_KEYS = {
 // 1. INDEXEDDB ENGINE (Backed by SQLite on Android)
 // ============================================================================
 
+let cachedDbPromise: Promise<IDBDatabase> | null = null;
+
 function getIDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (cachedDbPromise) return cachedDbPromise;
+
+  cachedDbPromise = new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
       reject(new Error('IndexedDB indisponible'));
       return;
@@ -38,8 +43,13 @@ function getIDB(): Promise<IDBDatabase> {
       }
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = (e) => {
+      cachedDbPromise = null;
+      reject(req.error || e);
+    };
   });
+
+  return cachedDbPromise;
 }
 
 export async function idbGet<T>(key: string): Promise<T | null> {
@@ -102,24 +112,39 @@ async function nativePrefSet(key: string, value: string): Promise<void> {
 
 /**
  * Enregistre l'avatar personnalisé dans tous les niveaux de stockage :
- * LocalStorage + IndexedDB + Capacitor Preferences.
+ * LocalStorage (clé principale + clé legacy) + IndexedDB + Capacitor Preferences.
+ * Met également à jour le profil stocké en mémoire pour éviter toute divergence.
  */
 export async function persistCustomAvatar(avatarUrl: string): Promise<void> {
   if (typeof window === 'undefined' || !avatarUrl || !avatarUrl.trim()) return;
   const cleanUrl = avatarUrl.trim();
 
-  // 1. LocalStorage immédiat
+  // 1. LocalStorage immédiat (double clé pour compatibilité 100%)
   try {
     localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl);
+    localStorage.setItem(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl);
+
+    // Mettre à jour immédiatement l'avatar dans le profil en LocalStorage
+    const profileRaw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    if (profileRaw) {
+      try {
+        const p: UserProfile = JSON.parse(profileRaw);
+        p.avatar = cleanUrl;
+        localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(p));
+        idbSet(STORAGE_KEYS.USER_PROFILE, p).catch(() => {});
+      } catch {}
+    }
   } catch (e) {
     console.warn('LocalStorage error on custom avatar:', e);
   }
 
   // 2. IndexedDB persistant (SQLite)
   idbSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl).catch(() => {});
+  idbSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl).catch(() => {});
 
   // 3. Capacitor Native Preferences
   nativePrefSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl).catch(() => {});
+  nativePrefSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl).catch(() => {});
 }
 
 /**
@@ -129,33 +154,36 @@ export async function persistCustomAvatar(avatarUrl: string): Promise<void> {
 export async function restoreCustomAvatar(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
 
-  // 1. Vérifier LocalStorage
+  // 1. Vérifier LocalStorage (clé v1 principale puis clé legacy)
   try {
-    const local = localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR);
+    const local = localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) || localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR);
     if (local && local.trim()) return local.trim();
   } catch {}
 
-  // 2. Vérifier IndexedDB (indestructible)
+  // 2. Vérifier IndexedDB (indestructible sur Android)
   try {
-    const idb = await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR);
-    if (idb && idb.trim()) {
-      // Re-synchroniser le LocalStorage
+    const idbVal = (await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR)) || (await idbGet<string>(STORAGE_KEYS.LEGACY_AVATAR));
+    if (idbVal && idbVal.trim()) {
+      const clean = idbVal.trim();
       try {
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, idb.trim());
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, clean);
+        localStorage.setItem(STORAGE_KEYS.LEGACY_AVATAR, clean);
       } catch {}
-      return idb.trim();
+      return clean;
     }
   } catch {}
 
   // 3. Vérifier Capacitor Preferences
   try {
-    const native = await nativePrefGet(STORAGE_KEYS.CUSTOM_AVATAR);
+    const native = (await nativePrefGet(STORAGE_KEYS.CUSTOM_AVATAR)) || (await nativePrefGet(STORAGE_KEYS.LEGACY_AVATAR));
     if (native && native.trim()) {
+      const clean = native.trim();
       try {
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, native.trim());
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_AVATAR, clean);
+        localStorage.setItem(STORAGE_KEYS.LEGACY_AVATAR, clean);
       } catch {}
-      idbSet(STORAGE_KEYS.CUSTOM_AVATAR, native.trim()).catch(() => {});
-      return native.trim();
+      idbSet(STORAGE_KEYS.CUSTOM_AVATAR, clean).catch(() => {});
+      return clean;
     }
   } catch {}
 
@@ -187,6 +215,11 @@ export async function restorePersistentState(): Promise<{
         userProfile = JSON.parse(nativeRaw);
       }
     } catch {}
+  }
+
+  // Si on a un avatar personnalisé restauré, on s'assure qu'il est synchronisé dans le profil
+  if (customAvatar && userProfile) {
+    userProfile.avatar = customAvatar;
   }
 
   return { customAvatar, userProfile };

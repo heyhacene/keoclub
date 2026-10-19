@@ -290,7 +290,9 @@ export function loadUserProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_USER;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    const customAvatar = localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR);
+    const customAvatar =
+      localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
+      localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR);
 
     if (!raw) {
       return {
@@ -308,7 +310,11 @@ export function loadUserProfile(): UserProfile {
     }
     return parsed;
   } catch {
-    const customAvatar = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) : null;
+    const customAvatar =
+      typeof window !== 'undefined'
+        ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
+          localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR)
+        : null;
     return {
       ...DEFAULT_USER,
       ...(customAvatar && customAvatar.trim() ? { avatar: customAvatar.trim() } : {}),
@@ -319,7 +325,7 @@ export function loadUserProfile(): UserProfile {
 export function saveUserProfile(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   try {
-    if (user.avatar && user.avatar.trim() && user.avatar !== DEFAULT_USER.avatar) {
+    if (user.avatar && user.avatar.trim()) {
       persistCustomAvatar(user.avatar.trim());
     }
     localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Film, Tv, Music, BookOpen, Mic, Star, Heart, Play, Pause, Send, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { MediaItem, MediaType, PersonalItem, PersonalItemStatus } from '@/types/culture';
+import { UserAvatar } from './UserAvatar';
 
 interface MediaCardProps {
   personalItem?: PersonalItem;
@@ -109,9 +110,9 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           {/* "Droppé par..." Banner if recommended by a friend */}
           {personalItem?.droppedBy && (
             <div className="absolute bottom-2 left-2 right-2 p-1.5 rounded-xl bg-club-950/90 backdrop-blur-md border border-drop-pink/30 flex items-center space-x-2">
-              <img
+              <UserAvatar
                 src={personalItem.droppedBy.avatar}
-                alt={personalItem.droppedBy.name}
+                name={personalItem.droppedBy.name}
                 className="w-5 h-5 rounded-full object-cover ring-1 ring-drop-pink"
               />
               <span className="text-[10px] text-slate-200 font-semibold truncate">

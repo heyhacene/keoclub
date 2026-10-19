@@ -17,6 +17,7 @@ import {
 import { UserProfile } from '@/types/culture';
 import { registerWithPseudo, loginWithPseudo } from '@/lib/supabase';
 import { AVATAR_PRESETS, processImageFileToAvatar } from '@/lib/imageUtils';
+import { UserAvatar } from './UserAvatar';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -202,9 +203,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="relative group cursor-pointer w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-drop-pink shadow-md shrink-0 bg-club-900"
                     title="Cliquer pour importer une photo"
                   >
-                    <img
+                    <UserAvatar
                       src={selectedAvatar}
-                      alt="Avatar"
+                      name={name || 'Avatar'}
                       className="w-full h-full object-cover transition group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition flex items-center justify-center text-white">
@@ -257,7 +258,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               : 'border-club-800 opacity-60 hover:opacity-100'
                           }`}
                         >
-                          <img src={av} alt="Avatar" className="w-full h-full object-cover" />
+                          <UserAvatar src={av} name={`P${idx + 1}`} className="w-full h-full object-cover" />
                           {isSelected && (
                             <div className="absolute inset-0 bg-drop-pink/30 flex items-center justify-center">
                               <Check className="w-3.5 h-3.5 text-white drop-shadow" />

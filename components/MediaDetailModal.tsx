@@ -3,6 +3,7 @@
 import React from 'react';
 import { X, Send, Bookmark, BookmarkCheck, Star, Play, Pause, ExternalLink, CheckCircle2, Clock, Sparkles, Heart, Trash2 } from 'lucide-react';
 import { MediaItem, MediaType, PersonalItem, PersonalItemStatus } from '@/types/culture';
+import { UserAvatar } from './UserAvatar';
 
 interface MediaDetailModalProps {
   media: MediaItem | null;
@@ -123,9 +124,9 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
           {/* Note from friend if present */}
           {personalItem?.droppedBy && (
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-drop-pink/15 via-keo-600/10 to-transparent border border-drop-pink/30 flex items-start space-x-3">
-              <img
+              <UserAvatar
                 src={personalItem.droppedBy.avatar}
-                alt={personalItem.droppedBy.name}
+                name={personalItem.droppedBy.name}
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-drop-pink shrink-0"
               />
               <div className="min-w-0">

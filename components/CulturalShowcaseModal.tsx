@@ -23,6 +23,7 @@ import {
   Info,
 } from 'lucide-react';
 import { Friend, MediaItem, MediaType, UserTopPicks } from '@/types/culture';
+import { UserAvatar } from './UserAvatar';
 
 interface CulturalShowcaseModalProps {
   friend: Friend | null;
@@ -137,9 +138,9 @@ export const CulturalShowcaseModal: React.FC<CulturalShowcaseModalProps> = ({
           <div className="flex items-start justify-between relative z-10">
             <div className="flex items-center space-x-3.5">
               <div className="relative">
-                <img
+                <UserAvatar
                   src={friend.avatar}
-                  alt={friend.name}
+                  name={friend.name}
                   className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-amber-400 shadow-xl"
                 />
                 <span className="absolute -bottom-1 -right-1 p-1 bg-amber-400 text-club-950 rounded-lg shadow-md" title="Panthéon Culturel">

@@ -50,6 +50,7 @@ import {
   saveFriends,
   loadUserProfile,
   saveUserProfile,
+  DEFAULT_USER,
 } from '@/lib/storage';
 import { Navbar } from '@/components/Navbar';
 import { BottomNav, MainTab } from '@/components/BottomNav';
@@ -63,7 +64,8 @@ import { AuthModal } from '@/components/AuthModal';
 import { CulturalShowcaseModal } from '@/components/CulturalShowcaseModal';
 import { TopPicksEditorModal } from '@/components/TopPicksEditorModal';
 import { PullToRefresh } from '@/components/PullToRefresh';
-import { restorePersistentState } from '@/lib/persistentStorage';
+import { UserAvatar } from '@/components/UserAvatar';
+import { restorePersistentState, persistCustomAvatar } from '@/lib/persistentStorage';
 import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
@@ -112,25 +114,35 @@ export default function KeoClubHome() {
     setPersonalList(loadPersonalList());
     setDrops(loadDrops());
     setFriends(loadFriends());
-    setUser(loadUserProfile());
+    const initialUser = loadUserProfile();
+    setUser(initialUser);
     setIsLoaded(true);
 
     // 2. Restauration asynchrone indestructible (IndexedDB SQLite & SharedPreferences)
     restorePersistentState().then(({ customAvatar, userProfile }) => {
-      if (customAvatar) {
+      if (customAvatar && customAvatar.trim()) {
+        const clean = customAvatar.trim();
         setUser((prev) => {
-          if (prev.avatar !== customAvatar) {
-            return { ...prev, avatar: customAvatar };
+          if (prev.avatar !== clean) {
+            return { ...prev, avatar: clean };
           }
           return prev;
         });
-      }
-      if (userProfile) {
-        setUser((prev) => ({
-          ...prev,
-          ...userProfile,
-          avatar: customAvatar || userProfile.avatar || prev.avatar,
-        }));
+      } else if (userProfile) {
+        setUser((prev) => {
+          // Ne jamais écraser un avatar utilisateur existant avec DEFAULT_USER.avatar
+          const isCurrentDefault = !prev.avatar || prev.avatar === DEFAULT_USER.avatar;
+          const isStoredDefault = !userProfile.avatar || userProfile.avatar === DEFAULT_USER.avatar;
+          const finalAvatar = !isStoredDefault
+            ? userProfile.avatar
+            : (!isCurrentDefault ? prev.avatar : userProfile.avatar);
+
+          return {
+            ...prev,
+            ...userProfile,
+            avatar: finalAvatar,
+          };
+        });
       }
     });
   }, []);
@@ -299,11 +311,9 @@ export default function KeoClubHome() {
   const handleLoginSuccess = (loggedUser: UserProfile) => {
     setUser(loggedUser);
     saveUserProfile(loggedUser);
-    try {
-      if (loggedUser.avatar) {
-        localStorage.setItem('keoclub_user_avatar_v1', loggedUser.avatar);
-      }
-    } catch {}
+    if (loggedUser.avatar) {
+      persistCustomAvatar(loggedUser.avatar);
+    }
     pullDropsFromCloud(loggedUser.id)
       .then((cloudDrops) => {
         if (cloudDrops && cloudDrops.length > 0) {
@@ -324,11 +334,9 @@ export default function KeoClubHome() {
     };
     setUser({ ...updated });
     saveUserProfile(updated);
-    try {
-      if (updated.avatar) {
-        localStorage.setItem('keoclub_user_avatar_v1', updated.avatar);
-      }
-    } catch {}
+    if (updated.avatar) {
+      persistCustomAvatar(updated.avatar);
+    }
     updateUserInCloud(updated).catch(() => {});
   };
 
@@ -341,17 +349,17 @@ export default function KeoClubHome() {
     const freshList = loadPersonalList();
     const freshFriends = loadFriends();
 
-    setUser(freshUser);
     setPersonalList(freshList);
     setDrops(freshDrops);
     setFriends(freshFriends);
 
     try {
       const { customAvatar } = await restorePersistentState();
-      if (customAvatar) {
-        setUser((prev) => ({ ...prev, avatar: customAvatar }));
-      }
-    } catch {}
+      const finalAvatar = customAvatar || freshUser.avatar;
+      setUser({ ...freshUser, avatar: finalAvatar });
+    } catch {
+      setUser(freshUser);
+    }
 
     try {
       if (freshUser.id) {
@@ -546,15 +554,12 @@ export default function KeoClubHome() {
               {/* Bannière Profil & Code Ami */}
               <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-keo-600/15 via-drop-pink/15 to-transparent border border-club-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center space-x-3">
-                  <img
+                  <UserAvatar
                     src={user.avatar}
-                    alt={user.name}
+                    name={user.name}
                     onClick={() => setIsSettingsOpen(true)}
                     className="w-10 h-10 rounded-2xl object-cover ring-2 ring-drop-pink shrink-0 cursor-pointer hover:ring-keo-400 active:scale-95 transition"
                     title="Modifier mon avatar et profil"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=Hacene';
-                    }}
                   />
                 <div>
                   <div className="flex items-center space-x-2">
@@ -983,14 +988,12 @@ export default function KeoClubHome() {
             {/* Profile Bar */}
             <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/15 via-keo-600/10 to-drop-pink/15 border border-amber-500/30 flex items-center justify-between">
               <div className="flex items-center space-x-3.5">
-                <img
+                <UserAvatar
                   src={user.avatar}
-                  alt={user.name}
+                  name={user.name}
                   onClick={() => setIsSettingsOpen(true)}
                   className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400 shadow-md cursor-pointer hover:scale-105 transition"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=Hacene';
-                  }}
+                  title="Modifier mon avatar et profil"
                 />
                 <div>
                   <div className="flex items-center space-x-2">
@@ -1205,9 +1208,9 @@ export default function KeoClubHome() {
                       className="flex items-center space-x-3 cursor-pointer group"
                     >
                       <div className="relative">
-                        <img
+                        <UserAvatar
                           src={friend.avatar}
-                          alt={friend.name}
+                          name={friend.name}
                           className="w-12 h-12 rounded-2xl object-cover ring-2 ring-drop-cyan/50 group-hover:scale-105 transition"
                         />
                         {friend.isOnline && (
@@ -1374,6 +1377,9 @@ export default function KeoClubHome() {
           const fresh = { ...u };
           setUser(fresh);
           saveUserProfile(fresh);
+          if (fresh.avatar) {
+            persistCustomAvatar(fresh.avatar);
+          }
           updateUserInCloud(fresh).catch(() => {});
         }}
         onOpenAuth={() => setIsAuthOpen(true)}

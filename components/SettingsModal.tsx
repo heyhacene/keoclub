@@ -23,6 +23,7 @@ import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
 import { getDirectKeoClubApkUrl, DEFAULT_KEOCLUB_BUILD, fetchLatestKeoClubApk } from '@/lib/apkUpdate';
 import { AVATAR_PRESETS, processImageFileToAvatar, generateRandomAvatarUrl } from '@/lib/imageUtils';
 import { STORAGE_KEYS, persistCustomAvatar } from '@/lib/persistentStorage';
+import { UserAvatar } from './UserAvatar';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -63,7 +64,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setName(user.name);
       setHandle(user.handle);
       setBio(user.bio);
-      const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) : null;
+      const savedAvatar =
+        typeof window !== 'undefined'
+          ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
+            localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR)
+          : null;
       setAvatar(savedAvatar || user.avatar);
       setTmdbKey(getTmdbApiKey());
       setAvatarError(null);
@@ -133,7 +138,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
    */
   const handleSaveAndClose = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const storedAvatar = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) : null;
+    const storedAvatar =
+      typeof window !== 'undefined'
+        ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) ||
+          localStorage.getItem(STORAGE_KEYS.LEGACY_AVATAR)
+        : null;
     const finalAvatar = avatar || storedAvatar || user.avatar;
 
     if (finalAvatar) {
@@ -243,13 +252,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="relative group cursor-pointer w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-drop-pink shadow-lg shadow-drop-pink/20 shrink-0 bg-club-900 transition hover:ring-keo-400 active:scale-95"
                   title="Cliquer pour changer de photo"
                 >
-                  <img
+                  <UserAvatar
                     src={avatar}
-                    alt={name}
+                    name={name}
                     className="w-full h-full object-cover transition group-hover:scale-105"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=KeoFallback';
-                    }}
                   />
                   <div className="absolute inset-0 bg-black/45 group-hover:bg-black/60 transition flex flex-col items-center justify-center text-white opacity-90 group-hover:opacity-100">
                     {isProcessingAvatar ? (
@@ -351,13 +357,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }`}
                         title="Sélectionner cet avatar"
                       >
-                        <img
+                        <UserAvatar
                           src={preset}
-                          alt="Preset"
+                          name={`P${idx + 1}`}
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=preset${idx}`;
-                          }}
                         />
                         {isSelected && (
                           <div className="absolute inset-0 bg-drop-pink/35 flex items-center justify-center">
