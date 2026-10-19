@@ -63,6 +63,7 @@ import { AuthModal } from '@/components/AuthModal';
 import { CulturalShowcaseModal } from '@/components/CulturalShowcaseModal';
 import { TopPicksEditorModal } from '@/components/TopPicksEditorModal';
 import { PullToRefresh } from '@/components/PullToRefresh';
+import { restorePersistentState } from '@/lib/persistentStorage';
 import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
@@ -107,11 +108,31 @@ export default function KeoClubHome() {
   const [addFriendFeedback, setAddFriendFeedback] = useState<string | null>(null);
 
   useEffect(() => {
+    // 1. Chargement synchrone immédiat (depuis LocalStorage)
     setPersonalList(loadPersonalList());
     setDrops(loadDrops());
     setFriends(loadFriends());
     setUser(loadUserProfile());
     setIsLoaded(true);
+
+    // 2. Restauration asynchrone indestructible (IndexedDB SQLite & SharedPreferences)
+    restorePersistentState().then(({ customAvatar, userProfile }) => {
+      if (customAvatar) {
+        setUser((prev) => {
+          if (prev.avatar !== customAvatar) {
+            return { ...prev, avatar: customAvatar };
+          }
+          return prev;
+        });
+      }
+      if (userProfile) {
+        setUser((prev) => ({
+          ...prev,
+          ...userProfile,
+          avatar: customAvatar || userProfile.avatar || prev.avatar,
+        }));
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -324,6 +345,13 @@ export default function KeoClubHome() {
     setPersonalList(freshList);
     setDrops(freshDrops);
     setFriends(freshFriends);
+
+    try {
+      const { customAvatar } = await restorePersistentState();
+      if (customAvatar) {
+        setUser((prev) => ({ ...prev, avatar: customAvatar }));
+      }
+    } catch {}
 
     try {
       if (freshUser.id) {
@@ -1346,11 +1374,6 @@ export default function KeoClubHome() {
           const fresh = { ...u };
           setUser(fresh);
           saveUserProfile(fresh);
-          try {
-            if (fresh.avatar) {
-              localStorage.setItem('keoclub_user_avatar_v1', fresh.avatar);
-            }
-          } catch {}
           updateUserInCloud(fresh).catch(() => {});
         }}
         onOpenAuth={() => setIsAuthOpen(true)}

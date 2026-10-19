@@ -1,12 +1,6 @@
 import { PersonalItem, DropItem, Friend, UserProfile, MediaItem, PersonalItemStatus, UserTopPicks } from '@/types/culture';
 import { TRENDING_SUGGESTIONS } from './api-culture';
-
-const STORAGE_KEYS = {
-  PERSONAL_LIST: 'keoclub_personal_list_v1',
-  DROPS_INBOX: 'keoclub_drops_inbox_v1',
-  FRIENDS: 'keoclub_friends_v1',
-  USER_PROFILE: 'keoclub_profile_v1',
-};
+import { STORAGE_KEYS, persistCustomAvatar, idbSet } from './persistentStorage';
 
 // Profil utilisateur par défaut avec Top Culturel
 export const DEFAULT_USER: UserProfile = {
@@ -292,50 +286,44 @@ export function saveFriends(friends: Friend[]): void {
   }
 }
 
-const AVATAR_KEY = 'keoclub_user_avatar_v1';
-
 export function loadUserProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_USER;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    const savedAvatar = localStorage.getItem(AVATAR_KEY);
+    const customAvatar = localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR);
 
     if (!raw) {
-      const initial: UserProfile = { ...DEFAULT_USER };
-      if (savedAvatar && savedAvatar.trim()) {
-        initial.avatar = savedAvatar.trim();
-      }
-      saveUserProfile(initial);
-      return initial;
+      return {
+        ...DEFAULT_USER,
+        ...(customAvatar && customAvatar.trim() ? { avatar: customAvatar.trim() } : {}),
+      };
     }
+
     const parsed: UserProfile = JSON.parse(raw);
-    if (savedAvatar && savedAvatar.trim()) {
-      parsed.avatar = savedAvatar.trim();
+    if (customAvatar && customAvatar.trim()) {
+      parsed.avatar = customAvatar.trim();
     }
     if (!parsed.topPicks) {
       parsed.topPicks = DEFAULT_USER.topPicks;
-      saveUserProfile(parsed);
     }
     return parsed;
   } catch {
-    const fallback: UserProfile = { ...DEFAULT_USER };
-    try {
-      const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem(AVATAR_KEY) : null;
-      if (savedAvatar && savedAvatar.trim()) {
-        fallback.avatar = savedAvatar.trim();
-      }
-    } catch {}
-    return fallback;
+    const customAvatar = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) : null;
+    return {
+      ...DEFAULT_USER,
+      ...(customAvatar && customAvatar.trim() ? { avatar: customAvatar.trim() } : {}),
+    };
   }
 }
 
 export function saveUserProfile(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   try {
-    if (user.avatar && user.avatar.trim()) {
-      localStorage.setItem(AVATAR_KEY, user.avatar.trim());
+    if (user.avatar && user.avatar.trim() && user.avatar !== DEFAULT_USER.avatar) {
+      persistCustomAvatar(user.avatar.trim());
     }
     localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
+    idbSet(STORAGE_KEYS.USER_PROFILE, user).catch(() => {});
   } catch (e) {
     console.error('saveUserProfile error', e);
   }

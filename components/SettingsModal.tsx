@@ -22,6 +22,7 @@ import { UserProfile } from '@/types/culture';
 import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
 import { getDirectKeoClubApkUrl, DEFAULT_KEOCLUB_BUILD, fetchLatestKeoClubApk } from '@/lib/apkUpdate';
 import { AVATAR_PRESETS, processImageFileToAvatar, generateRandomAvatarUrl } from '@/lib/imageUtils';
+import { STORAGE_KEYS, persistCustomAvatar } from '@/lib/persistentStorage';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setName(user.name);
       setHandle(user.handle);
       setBio(user.bio);
-      const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem('keoclub_user_avatar_v1') : null;
+      const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) : null;
       setAvatar(savedAvatar || user.avatar);
       setTmdbKey(getTmdbApiKey());
       setAvatarError(null);
@@ -86,11 +87,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const applyAndSaveAvatar = (newAvatarUrl: string, message: string = 'Avatar mis à jour et enregistré !') => {
     setAvatar(newAvatarUrl);
     setAvatarError(null);
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('keoclub_user_avatar_v1', newAvatarUrl);
-      }
-    } catch {}
+    persistCustomAvatar(newAvatarUrl);
 
     const updatedUser: UserProfile = {
       ...user,
@@ -136,14 +133,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
    */
   const handleSaveAndClose = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const storedAvatar = typeof window !== 'undefined' ? localStorage.getItem('keoclub_user_avatar_v1') : null;
+    const storedAvatar = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.CUSTOM_AVATAR) : null;
     const finalAvatar = avatar || storedAvatar || user.avatar;
 
-    try {
-      if (typeof window !== 'undefined' && finalAvatar) {
-        localStorage.setItem('keoclub_user_avatar_v1', finalAvatar);
-      }
-    } catch {}
+    if (finalAvatar) {
+      persistCustomAvatar(finalAvatar);
+    }
 
     onSaveUser({
       ...user,
