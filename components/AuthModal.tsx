@@ -322,7 +322,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Retenez bien ce code : il vous servira à vous reconnecter sur n'importe quel appareil.
+                  Retenez bien ce code : il vous servira à vous reconnecter sur n&#39;importe quel appareil.
                 </p>
               </div>
 

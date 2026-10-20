@@ -332,7 +332,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Presets Gallery */}
               <div className="pt-2 border-t border-club-850">
                 <p className="text-[10px] text-slate-400 font-semibold mb-2">
-                  Ou touchez un avatar pour l'appliquer immédiatement :
+                  Ou touchez un avatar pour l&#39;appliquer immédiatement :
                 </p>
                 <div className="flex items-center space-x-2.5 overflow-x-auto pb-1.5 scrollbar-none">
                   {AVATAR_PRESETS.map((preset, idx) => {
@@ -441,7 +441,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="flex-1 py-2.5 px-3 bg-gradient-to-r from-keo-600 to-drop-pink hover:opacity-95 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition shadow-md active:scale-95"
               >
                 <Download className="w-4 h-4" />
-                <span>Télécharger l'APK</span>
+                <span>Télécharger l&#39;APK</span>
               </a>
 
               <button
