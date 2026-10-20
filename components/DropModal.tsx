@@ -121,7 +121,7 @@ export const DropModal: React.FC<DropModalProps> = ({
             {/* Friend Selector */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                À qui voulez-vous l'envoyer ?
+                À qui voulez-vous l&#39;envoyer ?
               </label>
               <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
                 {friends.map((f) => {
@@ -155,7 +155,7 @@ export const DropModal: React.FC<DropModalProps> = ({
             {/* Custom Note */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                Votre petit mot d'accompagnement
+                Votre petit mot d&#39;accompagnement
               </label>
               <textarea
                 value={note}

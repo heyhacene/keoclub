@@ -900,7 +900,7 @@ export default function KeoClubHome() {
                   Aucune œuvre dans cette sélection
                 </h3>
                 <p className="text-xs text-slate-400 max-w-xs">
-                  Recherchez un film, une série, un morceau ou un livre pour l'ajouter à vos listes.
+                  Recherchez un film, une série, un morceau ou un livre pour l&#39;ajouter à vos listes.
                 </p>
                 <button
                   type="button"
@@ -1072,7 +1072,7 @@ export default function KeoClubHome() {
                       </blockquote>
                     ) : (
                       <p className="text-xs text-slate-400 italic">
-                        Aucun mot ajouté. Cliquez sur "Changer" pour ajouter une citation ou avis personnalisé !
+                        Aucun mot ajouté. Cliquez sur &quot;Changer&quot; pour ajouter une citation ou avis personnalisé !
                       </p>
                     )}
 
@@ -1099,9 +1099,9 @@ export default function KeoClubHome() {
                   className="p-8 text-center border-2 border-dashed border-amber-500/30 rounded-2xl cursor-pointer hover:border-amber-400 transition bg-club-950/40"
                 >
                   <Crown className="w-8 h-8 text-amber-400/50 mx-auto mb-2" />
-                  <p className="text-sm font-bold text-white">Vous n'avez pas encore défini votre Coup de Cœur Absolu</p>
+                  <p className="text-sm font-bold text-white">Vous n&#39;avez pas encore défini votre Coup de Cœur Absolu</p>
                   <p className="text-xs text-slate-400 mt-1">
-                    L'œuvre emblématique qui vous représente le plus auprès de vos amis
+                    L&#39;œuvre emblématique qui vous représente le plus auprès de vos amis
                   </p>
                   <span className="inline-block mt-3 py-1.5 px-3.5 bg-amber-500 text-club-950 font-black rounded-xl text-xs shadow-md">
                     + Choisir mon Coup de Cœur
@@ -1144,7 +1144,7 @@ export default function KeoClubHome() {
                 <div className="flex items-center space-x-2">
                   <Users className="w-5 h-5 text-drop-cyan" />
                   <h1 className="text-xl sm:text-2xl font-black text-white">
-                    Mon Cercle d'Amis
+                    Mon Cercle d&#39;Amis
                   </h1>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
