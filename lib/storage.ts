@@ -37,6 +37,7 @@ export const DEFAULT_FRIENDS: Friend[] = [
     favoriteGenres: ['Cinéma', 'Thriller', 'Série'],
     dropsCount: 14,
     isOnline: true,
+    status: 'accepted',
     topPick: TRENDING_SUGGESTIONS[0], // Dune 2
     topPicks: {
       movie: TRENDING_SUGGESTIONS[0], // Dune 2
@@ -62,6 +63,7 @@ export const DEFAULT_FRIENDS: Friend[] = [
     favoriteGenres: ['Électro', 'Funk', 'Jazz'],
     dropsCount: 9,
     isOnline: false,
+    status: 'pending',
     topPick: TRENDING_SUGGESTIONS[2], // Daft Punk
     topPicks: {
       movie: TRENDING_SUGGESTIONS[5], // Interstellar
@@ -87,6 +89,7 @@ export const DEFAULT_FRIENDS: Friend[] = [
     favoriteGenres: ['Roman', 'Science-Fiction', 'BD'],
     dropsCount: 21,
     isOnline: true,
+    status: 'accepted',
     topPick: TRENDING_SUGGESTIONS[3], // Le Problème à 3 corps
     topPicks: {
       movie: TRENDING_SUGGESTIONS[0], // Dune 2
@@ -112,6 +115,7 @@ export const DEFAULT_FRIENDS: Friend[] = [
     favoriteGenres: ['Podcast', 'Séries', 'Docu'],
     dropsCount: 12,
     isOnline: true,
+    status: 'accepted',
     topPick: TRENDING_SUGGESTIONS[1], // Severance
     topPicks: {
       movie: TRENDING_SUGGESTIONS[5], // Interstellar
@@ -319,28 +323,8 @@ export function loadUserProfile(): UserProfile {
 export function saveUserProfile(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   try {
-    // S'assurer qu'un appel à saveUserProfile avec l'avatar par défaut n'écrase JAMAIS un avatar personnalisé déjà enregistré
-    const existingCustomAvatar = getCustomAvatarSync();
-    const userHasCustomAvatar =
-      user.avatar &&
-      user.avatar.trim() &&
-      user.avatar.trim() !== DEFAULT_USER.avatar;
-
-    const finalAvatar = userHasCustomAvatar
-      ? user.avatar.trim()
-      : existingCustomAvatar || user.avatar || DEFAULT_USER.avatar;
-
-    const finalUser: UserProfile = {
-      ...user,
-      avatar: finalAvatar,
-    };
-
-    if (finalAvatar && finalAvatar !== DEFAULT_USER.avatar) {
-      persistCustomAvatar(finalAvatar);
-    }
-
-    syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(finalUser));
-    idbSet(STORAGE_KEYS.USER_PROFILE, finalUser).catch(() => {});
+    syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
+    idbSet(STORAGE_KEYS.USER_PROFILE, user).catch(() => {});
   } catch (e) {
     console.error('saveUserProfile error', e);
   }

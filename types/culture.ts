@@ -75,6 +75,7 @@ export interface Friend {
   topPicks?: UserTopPicks;
   dropsCount: number;
   isOnline?: boolean;
+  status?: 'pending' | 'accepted';
 }
 
 export interface UserProfile {
