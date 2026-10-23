@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Trophy,
@@ -47,6 +47,25 @@ export const TopPicksEditorModal: React.FC<TopPicksEditorModalProps> = ({
   const [searchResults, setSearchResults] = useState<MediaItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [personalNoteInput, setPersonalNoteInput] = useState('');
+
+  // Resynchroniser avec le profil à chaque ouverture (évite les données périmées)
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentTops(topPicks);
+      setSelectedCategory(defaultCategory);
+      const n =
+        defaultCategory === 'overall' ? topPicks.overallNote :
+        defaultCategory === 'movie' ? topPicks.movieNote :
+        defaultCategory === 'tv' ? topPicks.tvNote :
+        defaultCategory === 'music' ? topPicks.musicNote :
+        defaultCategory === 'book' ? topPicks.bookNote :
+        topPicks.podcastNote;
+      setPersonalNoteInput(n || '');
+      setSearchQuery('');
+      setSearchResults([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

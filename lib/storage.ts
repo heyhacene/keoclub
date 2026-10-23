@@ -270,7 +270,16 @@ export function loadFriends(): Friend[] {
       return DEFAULT_FRIENDS;
     }
     const parsed: Friend[] = JSON.parse(raw);
-    return parsed;
+    // Assurer que les amis possèdent leurs topPicks par défaut si absents
+    return parsed.map((f) => {
+      if (!f.topPicks) {
+        const defaultMatch = DEFAULT_FRIENDS.find((df) => df.id === f.id);
+        if (defaultMatch?.topPicks) {
+          return { ...f, topPicks: defaultMatch.topPicks, topPick: f.topPick || defaultMatch.topPick };
+        }
+      }
+      return f;
+    });
   } catch {
     return DEFAULT_FRIENDS;
   }
