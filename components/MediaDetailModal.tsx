@@ -243,7 +243,12 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
           {/* Add / Remove from Personal List */}
           <button
             type="button"
-            onClick={() => onTogglePersonalList(media)}
+            onClick={() => {
+              onTogglePersonalList(media);
+              if (isInList) {
+                onClose();
+              }
+            }}
             className={`py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition ${
               isInList
                 ? 'bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30'

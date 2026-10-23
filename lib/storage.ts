@@ -228,7 +228,9 @@ export function loadPersonalList(): PersonalItem[] {
 export function savePersonalList(list: PersonalItem[]): void {
   if (typeof window === 'undefined') return;
   try {
-    syncStorageSet(STORAGE_KEYS.PERSONAL_LIST, JSON.stringify(list));
+    const raw = JSON.stringify(list);
+    syncStorageSet(STORAGE_KEYS.PERSONAL_LIST, raw);
+    idbSet(STORAGE_KEYS.PERSONAL_LIST, list).catch(() => {});
   } catch (e) {
     console.error('savePersonalList error', e);
   }
@@ -251,7 +253,9 @@ export function loadDrops(): DropItem[] {
 export function saveDrops(drops: DropItem[]): void {
   if (typeof window === 'undefined') return;
   try {
-    syncStorageSet(STORAGE_KEYS.DROPS_INBOX, JSON.stringify(drops));
+    const raw = JSON.stringify(drops);
+    syncStorageSet(STORAGE_KEYS.DROPS_INBOX, raw);
+    idbSet(STORAGE_KEYS.DROPS_INBOX, drops).catch(() => {});
   } catch (e) {
     console.error('saveDrops error', e);
   }
@@ -266,16 +270,7 @@ export function loadFriends(): Friend[] {
       return DEFAULT_FRIENDS;
     }
     const parsed: Friend[] = JSON.parse(raw);
-    // Assurer que les amis possèdent leurs topPicks par défaut si absents
-    return parsed.map((f) => {
-      if (!f.topPicks) {
-        const defaultMatch = DEFAULT_FRIENDS.find((df) => df.id === f.id);
-        if (defaultMatch?.topPicks) {
-          f.topPicks = defaultMatch.topPicks;
-        }
-      }
-      return f;
-    });
+    return parsed;
   } catch {
     return DEFAULT_FRIENDS;
   }
@@ -284,7 +279,9 @@ export function loadFriends(): Friend[] {
 export function saveFriends(friends: Friend[]): void {
   if (typeof window === 'undefined') return;
   try {
-    syncStorageSet(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
+    const raw = JSON.stringify(friends);
+    syncStorageSet(STORAGE_KEYS.FRIENDS, raw);
+    idbSet(STORAGE_KEYS.FRIENDS, friends).catch(() => {});
   } catch (e) {
     console.error('saveFriends error', e);
   }
@@ -304,9 +301,9 @@ export function loadUserProfile(): UserProfile {
     }
 
     const parsed: UserProfile = JSON.parse(raw);
-    if (customAvatar) {
-      parsed.avatar = customAvatar;
-    }
+    const resolvedAvatar = customAvatar || (parsed.avatar && parsed.avatar.trim() ? parsed.avatar.trim() : DEFAULT_USER.avatar);
+    parsed.avatar = resolvedAvatar;
+
     if (!parsed.topPicks) {
       parsed.topPicks = DEFAULT_USER.topPicks;
     }
@@ -323,8 +320,12 @@ export function loadUserProfile(): UserProfile {
 export function saveUserProfile(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   try {
-    syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(user));
+    const raw = JSON.stringify(user);
+    syncStorageSet(STORAGE_KEYS.USER_PROFILE, raw);
     idbSet(STORAGE_KEYS.USER_PROFILE, user).catch(() => {});
+    if (user.avatar && user.avatar.trim()) {
+      persistCustomAvatar(user.avatar.trim()).catch(() => {});
+    }
   } catch (e) {
     console.error('saveUserProfile error', e);
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Film, Tv, Music, BookOpen, Mic, Star, Heart, Play, Pause, Send, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { Film, Tv, Music, BookOpen, Mic, Star, Heart, Play, Pause, Send, CheckCircle2, Clock, Sparkles, Trash2 } from 'lucide-react';
 import { MediaItem, MediaType, PersonalItem, PersonalItemStatus } from '@/types/culture';
 import { UserAvatar } from './UserAvatar';
 
@@ -13,6 +13,7 @@ interface MediaCardProps {
   onPlayAudio?: (url: string, title: string, creator: string, poster: string) => void;
   isPlayingAudio?: boolean;
   onUpdateStatus?: (id: string, status: PersonalItemStatus) => void;
+  onRemovePersonalItem?: (id: string, title?: string) => void;
 }
 
 export const MediaCard: React.FC<MediaCardProps> = ({
@@ -23,6 +24,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
   onPlayAudio,
   isPlayingAudio = false,
   onUpdateStatus,
+  onRemovePersonalItem,
 }) => {
   const media = personalItem ? personalItem.media : mediaItem!;
   if (!media) return null;
@@ -170,16 +172,32 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           </span>
         )}
 
-        {/* Quick Drop Button */}
-        <button
-          type="button"
-          onClick={handleDropClick}
-          className="p-1.5 rounded-xl bg-club-800 hover:bg-keo-600 text-slate-300 hover:text-white transition active:scale-90 flex items-center space-x-1 text-xs font-bold"
-          title="Dropper à un ami"
-        >
-          <Send className="w-3.5 h-3.5" />
-          <span className="text-[10px] hidden sm:inline">Drop</span>
-        </button>
+        <div className="flex items-center space-x-1.5">
+          {personalItem && onRemovePersonalItem && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemovePersonalItem(personalItem.id, media.title);
+              }}
+              className="p-1.5 rounded-xl bg-club-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-club-700/60 hover:border-red-500/30 transition active:scale-90"
+              title="Supprimer de ma liste"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Quick Drop Button */}
+          <button
+            type="button"
+            onClick={handleDropClick}
+            className="p-1.5 rounded-xl bg-club-800 hover:bg-keo-600 text-slate-300 hover:text-white transition active:scale-90 flex items-center space-x-1 text-xs font-bold"
+            title="Dropper à un ami"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span className="text-[10px] hidden sm:inline">Drop</span>
+          </button>
+        </div>
       </div>
     </div>
   );

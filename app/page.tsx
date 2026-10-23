@@ -65,12 +65,19 @@ import { CulturalShowcaseModal } from '@/components/CulturalShowcaseModal';
 import { TopPicksEditorModal } from '@/components/TopPicksEditorModal';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { UserAvatar } from '@/components/UserAvatar';
-import { restorePersistentState, persistCustomAvatar } from '@/lib/persistentStorage';
+import { restorePersistentState, persistCustomAvatar, getCustomAvatarSync } from '@/lib/persistentStorage';
 import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
 
 export default function KeoClubHome() {
   const [currentTab, setCurrentTab] = useState<MainTab>('drops');
-  const [user, setUser] = useState<UserProfile>(loadUserProfile());
+  const [user, setUser] = useState<UserProfile>(() => {
+    const u = loadUserProfile();
+    const customAvatarSync = getCustomAvatarSync();
+    if (customAvatarSync) {
+      u.avatar = customAvatarSync;
+    }
+    return u;
+  });
   const [personalList, setPersonalList] = useState<PersonalItem[]>([]);
   const [drops, setDrops] = useState<DropItem[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -115,22 +122,21 @@ export default function KeoClubHome() {
     setDrops(loadDrops());
     setFriends(loadFriends());
     const initialUser = loadUserProfile();
+    const customAvatarSync = getCustomAvatarSync();
+    if (customAvatarSync) {
+      initialUser.avatar = customAvatarSync;
+    }
     setUser(initialUser);
     setIsLoaded(true);
 
-    // 2. Restauration asynchrone complémentaire (IndexedDB SQLite & SharedPreferences)
+    // 2. Restauration asynchrone complémentaire (Capacitor Preferences, IndexedDB SQLite & SharedPreferences)
     restorePersistentState().then(({ customAvatar, userProfile }) => {
       const cleanAvatar = customAvatar && customAvatar.trim() ? customAvatar.trim() : null;
 
       if (cleanAvatar || userProfile) {
         setUser((prev) => {
           const merged = userProfile ? { ...prev, ...userProfile } : { ...prev };
-          const isCurrentDefault = !prev.avatar || prev.avatar === DEFAULT_USER.avatar;
-          const isProfileDefault = !merged.avatar || merged.avatar === DEFAULT_USER.avatar;
-
-          const finalAvatar =
-            cleanAvatar ||
-            (!isProfileDefault ? merged.avatar : !isCurrentDefault ? prev.avatar : DEFAULT_USER.avatar);
+          const finalAvatar = cleanAvatar || (merged.avatar && merged.avatar !== DEFAULT_USER.avatar ? merged.avatar : prev.avatar) || DEFAULT_USER.avatar;
 
           return {
             ...merged,
@@ -235,33 +241,105 @@ export default function KeoClubHome() {
 
   // 4. Action : Ajouter / Retirer une œuvre de ma liste
   const handleTogglePersonalList = (media: MediaItem, status: PersonalItemStatus = 'want') => {
-    const existingIndex = personalList.findIndex((p) => p.media.id === media.id);
-    if (existingIndex !== -1) {
-      setPersonalList((prev) => prev.filter((p) => p.media.id !== media.id));
-    } else {
-      const newItem: PersonalItem = {
-        id: `perso-${Date.now()}`,
-        media,
-        status,
-        addedAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      setPersonalList((prev) => [newItem, ...prev]);
+    setPersonalList((prev) => {
+      const existingIndex = prev.findIndex((p) => p.media.id === media.id);
+      let updated: PersonalItem[];
+      if (existingIndex !== -1) {
+        updated = prev.filter((p) => p.media.id !== media.id);
+      } else {
+        const newItem: PersonalItem = {
+          id: `perso-${Date.now()}`,
+          media,
+          status,
+          addedAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        updated = [newItem, ...prev];
+      }
+      savePersonalList(updated);
+      return updated;
+    });
+  };
+
+  // 4b. Action : Supprimer définitivement une œuvre de ma liste
+  const handleRemovePersonalItem = (id: string, title?: string) => {
+    setPersonalList((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      savePersonalList(updated);
+      return updated;
+    });
+  };
+
+  // 4c. Action : Retirer un ami du cercle
+  const handleRemoveFriend = (friendId: string, friendName: string) => {
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Voulez-vous vraiment retirer ${friendName} de votre cercle ?`);
+      if (!confirmed) return;
     }
+    setFriends((prev) => {
+      const updated = prev.filter((f) => f.id !== friendId);
+      saveFriends(updated);
+      return updated;
+    });
+  };
+
+  // 4d. Action : Supprimer définitivement un Drop de la boîte
+  const handleDeleteDrop = (dropId: string) => {
+    setDrops((prev) => {
+      const updated = prev.filter((d) => d.id !== dropId);
+      saveDrops(updated);
+      return updated;
+    });
+  };
+
+  // 4e. Action : Retirer un coup de cœur du Panthéon
+  const handleRemoveTopPick = (category: 'overall' | 'movie' | 'tv' | 'music' | 'book' | 'podcast') => {
+    const currentTop = { ...(user.topPicks || {}) };
+    switch (category) {
+      case 'overall':
+        currentTop.overallFavorite = undefined;
+        currentTop.overallNote = undefined;
+        break;
+      case 'movie':
+        currentTop.movie = undefined;
+        currentTop.movieNote = undefined;
+        break;
+      case 'tv':
+        currentTop.tv = undefined;
+        currentTop.tvNote = undefined;
+        break;
+      case 'music':
+        currentTop.music = undefined;
+        currentTop.musicNote = undefined;
+        break;
+      case 'book':
+        currentTop.book = undefined;
+        currentTop.bookNote = undefined;
+        break;
+      case 'podcast':
+        currentTop.podcast = undefined;
+        currentTop.podcastNote = undefined;
+        break;
+    }
+    handleSaveUserTopPicks(currentTop);
   };
 
   // 5. Action : Mettre à jour le statut personnel
   const handleUpdateStatus = (id: string, status: PersonalItemStatus) => {
-    setPersonalList((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status, updatedAt: Date.now() } : p))
-    );
+    setPersonalList((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, status, updatedAt: Date.now() } : p));
+      savePersonalList(updated);
+      return updated;
+    });
   };
 
   // 6. Action : Mettre à jour la note personnelle
   const handleUpdateRating = (id: string, rating: number) => {
-    setPersonalList((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, myRating: rating, updatedAt: Date.now() } : p))
-    );
+    setPersonalList((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, myRating: rating, updatedAt: Date.now() } : p));
+      savePersonalList(updated);
+      return updated;
+    });
   };
 
   // 7. Action : Ajouter un ami par son code ou pseudo (Cloud + local)
@@ -446,17 +524,29 @@ export default function KeoClubHome() {
             <IconComponent className="w-3 h-3" />
             <span>{label}</span>
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              setTopEditorCategory(category);
-              setIsTopEditorOpen(true);
-            }}
-            className="text-[11px] font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1"
-          >
-            <Edit3 className="w-3 h-3 text-amber-400" />
-            <span>{media ? 'Modifier' : 'Définir'}</span>
-          </button>
+          <div className="flex items-center space-x-1.5">
+            {media && (
+              <button
+                type="button"
+                onClick={() => handleRemoveTopPick(category)}
+                className="p-1 text-slate-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition"
+                title={`Retirer ce ${label.toLowerCase()}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setTopEditorCategory(category);
+                setIsTopEditorOpen(true);
+              }}
+              className="text-[11px] font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1"
+            >
+              <Edit3 className="w-3 h-3 text-amber-400" />
+              <span>{media ? 'Modifier' : 'Définir'}</span>
+            </button>
+          </div>
         </div>
 
         {media ? (
@@ -687,9 +777,22 @@ export default function KeoClubHome() {
                             </div>
                           </div>
 
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-club-800 text-drop-pink border border-drop-pink/20">
-                            {drop.media.type}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-club-800 text-drop-pink border border-drop-pink/20">
+                              {drop.media.type}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDrop(drop.id);
+                              }}
+                              className="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
+                              title="Supprimer ce Drop"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Note from friend */}
@@ -927,6 +1030,7 @@ export default function KeoClubHome() {
                     onPlayAudio={handlePlayAudio}
                     isPlayingAudio={activeAudio?.url === item.media.previewAudioUrl}
                     onUpdateStatus={handleUpdateStatus}
+                    onRemovePersonalItem={handleRemovePersonalItem}
                   />
                 ))}
               </div>
@@ -1233,10 +1337,23 @@ export default function KeoClubHome() {
                       </div>
                     </div>
 
-                    {/* Drops count */}
-                    <span className="text-[10px] font-bold text-drop-pink bg-drop-pink/10 px-2 py-1 rounded-xl border border-drop-pink/20 shrink-0">
-                      {friend.dropsCount} Drops
-                    </span>
+                    {/* Drops count & Remove Friend Button */}
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="text-[10px] font-bold text-drop-pink bg-drop-pink/10 px-2 py-1 rounded-xl border border-drop-pink/20">
+                        {friend.dropsCount} Drops
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFriend(friend.id, friend.name);
+                        }}
+                        className="p-1.5 rounded-xl bg-club-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-club-700/60 hover:border-red-500/30 transition active:scale-90"
+                        title="Retirer cet ami du cercle"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Friend's Top Pick if any */}
@@ -1281,6 +1398,15 @@ export default function KeoClubHome() {
                     >
                       <Send className="w-3.5 h-3.5 text-drop-pink" />
                       <span>Lui faire un Drop</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFriend(friend.id, friend.name)}
+                      className="w-full py-1.5 px-3 rounded-xl hover:bg-red-500/10 text-slate-500 hover:text-red-400 text-[11px] font-semibold transition flex items-center justify-center space-x-1.5 active:scale-98"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Retirer de mon Cercle</span>
                     </button>
                   </div>
                 </div>

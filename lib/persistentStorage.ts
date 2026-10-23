@@ -8,6 +8,7 @@
  */
 
 import { UserProfile } from '@/types/culture';
+import { Preferences } from '@capacitor/preferences';
 
 const DB_NAME = 'keoclub_vault_v1';
 const STORE_NAME = 'keyval';
@@ -107,6 +108,11 @@ export function syncStorageSet(key: string, value: string): void {
   } catch (e) {
     console.warn('localStorage setItem error:', e);
   }
+
+  // 3. Écriture en tâche de fond dans Capacitor Preferences & IndexedDB
+  try {
+    nativePrefSet(key, value).catch(() => {});
+  } catch {}
 }
 
 // ============================================================================
@@ -174,23 +180,21 @@ export async function idbSet(key: string, value: any): Promise<boolean> {
 // 2. CAPACITOR NATIVE PREFERENCES BRIDGE (Optional Fallback)
 // ============================================================================
 
-async function nativePrefGet(key: string): Promise<string | null> {
+export async function nativePrefGet(key: string): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
   try {
-    const cap = (window as any)?.Capacitor;
-    if (cap && cap.Plugins && cap.Plugins.Preferences) {
-      const res = await cap.Plugins.Preferences.get({ key });
-      return res?.value || null;
+    const res = await Preferences.get({ key });
+    if (res && res.value !== null && res.value !== undefined && res.value !== '') {
+      return res.value;
     }
   } catch {}
   return null;
 }
 
-async function nativePrefSet(key: string, value: string): Promise<void> {
+export async function nativePrefSet(key: string, value: string): Promise<void> {
+  if (typeof window === 'undefined') return;
   try {
-    const cap = (window as any)?.Capacitor;
-    if (cap && cap.Plugins && cap.Plugins.Preferences) {
-      await cap.Plugins.Preferences.set({ key, value });
-    }
+    await Preferences.set({ key, value });
   } catch {}
 }
 
@@ -231,8 +235,10 @@ export async function persistCustomAvatar(avatarUrl: string): Promise<void> {
     if (profileRaw) {
       const p: UserProfile = JSON.parse(profileRaw);
       p.avatar = cleanUrl;
-      syncStorageSet(STORAGE_KEYS.USER_PROFILE, JSON.stringify(p));
+      const str = JSON.stringify(p);
+      syncStorageSet(STORAGE_KEYS.USER_PROFILE, str);
       idbSet(STORAGE_KEYS.USER_PROFILE, p).catch(() => {});
+      nativePrefSet(STORAGE_KEYS.USER_PROFILE, str).catch(() => {});
     }
   } catch {}
 
@@ -240,7 +246,7 @@ export async function persistCustomAvatar(avatarUrl: string): Promise<void> {
   idbSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl).catch(() => {});
   idbSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl).catch(() => {});
 
-  // 4. Capacitor Native Preferences
+  // 4. Capacitor Native Preferences (SharedPreferences Android)
   nativePrefSet(STORAGE_KEYS.CUSTOM_AVATAR, cleanUrl).catch(() => {});
   nativePrefSet(STORAGE_KEYS.LEGACY_AVATAR, cleanUrl).catch(() => {});
 }
@@ -257,23 +263,11 @@ export async function restoreCustomAvatar(): Promise<string | null> {
     // S'assurer que les deux clés sont bien synchronisées partout
     syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, syncVal);
     syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, syncVal);
+    nativePrefSet(STORAGE_KEYS.CUSTOM_AVATAR, syncVal).catch(() => {});
     return syncVal;
   }
 
-  // 2. Vérifier IndexedDB (SQLite)
-  try {
-    const idbVal =
-      (await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR)) ||
-      (await idbGet<string>(STORAGE_KEYS.LEGACY_AVATAR));
-    if (idbVal && idbVal.trim()) {
-      const clean = idbVal.trim();
-      syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, clean);
-      syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, clean);
-      return clean;
-    }
-  } catch {}
-
-  // 3. Vérifier Capacitor Preferences
+  // 2. Vérifier Capacitor Preferences (SharedPreferences natif Android)
   try {
     const native =
       (await nativePrefGet(STORAGE_KEYS.CUSTOM_AVATAR)) ||
@@ -287,18 +281,32 @@ export async function restoreCustomAvatar(): Promise<string | null> {
     }
   } catch {}
 
+  // 3. Vérifier IndexedDB (SQLite)
+  try {
+    const idbVal =
+      (await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR)) ||
+      (await idbGet<string>(STORAGE_KEYS.LEGACY_AVATAR));
+    if (idbVal && idbVal.trim()) {
+      const clean = idbVal.trim();
+      syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, clean);
+      syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, clean);
+      nativePrefSet(STORAGE_KEYS.CUSTOM_AVATAR, clean).catch(() => {});
+      return clean;
+    }
+  } catch {}
+
   return null;
 }
 
 /**
  * Restauration asynchrone complète au démarrage de l'app.
- * Récupère le profil et l'avatar personnalisé depuis SharedPreferences / SQLite.
+ * Récupère le profil et l'avatar personnalisé depuis SharedPreferences / SQLite / LocalStorage.
  */
 export async function restorePersistentState(): Promise<{
   customAvatar: string | null;
   userProfile: UserProfile | null;
 }> {
-  const customAvatar = await restoreCustomAvatar();
+  let customAvatar = await restoreCustomAvatar();
 
   let userProfile: UserProfile | null = null;
 
@@ -310,7 +318,18 @@ export async function restorePersistentState(): Promise<{
     }
   } catch {}
 
-  // 2. Sinon essayer depuis IndexedDB
+  // 2. Essayer depuis Capacitor Preferences (natif Android)
+  if (!userProfile) {
+    try {
+      const nativeRaw = await nativePrefGet(STORAGE_KEYS.USER_PROFILE);
+      if (nativeRaw) {
+        userProfile = JSON.parse(nativeRaw);
+        syncStorageSet(STORAGE_KEYS.USER_PROFILE, nativeRaw);
+      }
+    } catch {}
+  }
+
+  // 3. Essayer depuis IndexedDB
   if (!userProfile) {
     try {
       const idbProfile = await idbGet<UserProfile>(STORAGE_KEYS.USER_PROFILE);
@@ -321,15 +340,10 @@ export async function restorePersistentState(): Promise<{
     } catch {}
   }
 
-  // 3. Sinon essayer Capacitor Preferences
-  if (!userProfile) {
-    try {
-      const nativeRaw = await nativePrefGet(STORAGE_KEYS.USER_PROFILE);
-      if (nativeRaw) {
-        userProfile = JSON.parse(nativeRaw);
-        syncStorageSet(STORAGE_KEYS.USER_PROFILE, nativeRaw);
-      }
-    } catch {}
+  // Si userProfile contient un avatar et qu'on n'a pas encore customAvatar
+  if (!customAvatar && userProfile?.avatar && userProfile.avatar.trim()) {
+    customAvatar = userProfile.avatar.trim();
+    persistCustomAvatar(customAvatar).catch(() => {});
   }
 
   // Si on a un avatar personnalisé restauré, il est prioritaire à 100%

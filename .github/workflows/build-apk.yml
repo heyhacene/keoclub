@@ -101,8 +101,18 @@ jobs:
               private static final String PREFS_NAME = "KeoClubPermanentVault";
 
               @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  attachNativeVault();
+              }
+
+              @Override
               protected void load() {
                   super.load();
+                  attachNativeVault();
+              }
+
+              private void attachNativeVault() {
                   try {
                       if (this.bridge != null && this.bridge.getWebView() != null) {
                           WebView webView = this.bridge.getWebView();

@@ -172,7 +172,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const directApkUrl = getDirectKeoClubApkUrl();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleSaveAndClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-lg bg-club-900 border border-club-700/80 rounded-3xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[92vh]">
         {/* Header avec bouton Enregistrer et Fermer direct */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-club-800 bg-club-950/70">
