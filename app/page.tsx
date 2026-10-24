@@ -63,10 +63,12 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { AuthModal } from '@/components/AuthModal';
 import { CulturalShowcaseModal } from '@/components/CulturalShowcaseModal';
 import { TopPicksEditorModal } from '@/components/TopPicksEditorModal';
+import { UpdateModal } from '@/components/UpdateModal';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { UserAvatar } from '@/components/UserAvatar';
 import { restorePersistentState, persistCustomAvatar, getCustomAvatarSync } from '@/lib/persistentStorage';
 import { pushDropToCloud, searchFriendsInCloud, pullDropsFromCloud, updateUserInCloud } from '@/lib/supabase';
+import { fetchLatestKeoClubApk, DEFAULT_KEOCLUB_BUILD, LatestApkRelease } from '@/lib/apkUpdate';
 
 export default function KeoClubHome() {
   const [currentTab, setCurrentTab] = useState<MainTab>('drops');
@@ -100,6 +102,8 @@ export default function KeoClubHome() {
   const [isTopEditorOpen, setIsTopEditorOpen] = useState(false);
   const [topEditorCategory, setTopEditorCategory] = useState<'overall' | 'movie' | 'tv' | 'music' | 'book' | 'podcast'>('movie');
   const [copiedMyTopShare, setCopiedMyTopShare] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<LatestApkRelease | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
   // État lecteur audio flottant
   const [activeAudio, setActiveAudio] = useState<{
@@ -157,6 +161,15 @@ export default function KeoClubHome() {
     }).catch(() => {
       setIsLoaded(true);
     });
+
+    // 3. Vérification automatique de mise à jour APK en arrière-plan
+    fetchLatestKeoClubApk().then((release) => {
+      const currentBuildNum = parseInt(DEFAULT_KEOCLUB_BUILD, 10);
+      if (release && release.buildNumber && release.buildNumber > currentBuildNum) {
+        setAvailableUpdate(release);
+        setIsUpdateModalOpen(true);
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -1591,6 +1604,13 @@ export default function KeoClubHome() {
         onSaveTopPicks={handleSaveUserTopPicks}
         personalList={personalList}
         defaultCategory={topEditorCategory}
+      />
+
+      {/* Modal de Notification & Téléchargement de Mise à Jour (Automatique) */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        release={availableUpdate}
+        onClose={() => setIsUpdateModalOpen(false)}
       />
     </div>
   );

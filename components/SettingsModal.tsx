@@ -52,6 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const [latestRelease, setLatestRelease] = useState<{ buildNumber: number | null; downloadUrl: string } | null>(null);
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
@@ -161,10 +162,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setUpdateMsg(null);
     try {
       const release = await fetchLatestKeoClubApk();
-      if (release.buildNumber && release.buildNumber > parseInt(DEFAULT_KEOCLUB_BUILD, 10)) {
-        setUpdateMsg(`Nouvelle mise à jour disponible : Build ${release.buildNumber} !`);
-      } else {
-        setUpdateMsg(`Vous disposez déjà de la dernière version (Build ${DEFAULT_KEOCLUB_BUILD}).`);
+      if (release) {
+        setLatestRelease(release);
+        if (release.buildNumber && release.buildNumber > parseInt(DEFAULT_KEOCLUB_BUILD, 10)) {
+          setUpdateMsg(`Nouvelle mise à jour disponible : Build ${release.buildNumber} !`);
+        } else {
+          setUpdateMsg(`Vous disposez déjà de la dernière version (Build ${DEFAULT_KEOCLUB_BUILD}).`);
+        }
       }
     } catch {
       setUpdateMsg('Vérification effectuée. Vous êtes à jour.');
@@ -173,7 +177,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const directApkUrl = getDirectKeoClubApkUrl();
+  const directApkUrl = latestRelease?.downloadUrl || getDirectKeoClubApkUrl();
+  const displayBuild = latestRelease?.buildNumber || DEFAULT_KEOCLUB_BUILD;
 
   return (
     <div
@@ -435,7 +440,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className="text-xs font-bold text-white">Application Android (APK)</span>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-keo-600/20 text-keo-300 font-bold border border-keo-500/30">
-                Build {DEFAULT_KEOCLUB_BUILD}
+                Installé : Build {DEFAULT_KEOCLUB_BUILD}
               </span>
             </div>
 
@@ -446,11 +451,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex flex-col sm:flex-row gap-2">
               <a
                 href={directApkUrl}
-                download="KeoClub.apk"
+                download={`KeoClub-Build-${displayBuild}.apk`}
                 className="flex-1 py-2.5 px-3 bg-gradient-to-r from-keo-600 to-drop-pink hover:opacity-95 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition shadow-md active:scale-95"
               >
                 <Download className="w-4 h-4" />
-                <span>Télécharger l&#39;APK</span>
+                <span>Télécharger l&#39;APK (Build {displayBuild})</span>
               </a>
 
               <button
