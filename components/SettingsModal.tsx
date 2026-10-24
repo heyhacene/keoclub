@@ -83,16 +83,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   /**
-   * Sauvegarde instantanée dès qu'un avatar est choisi, téléversé ou généré
+   * Sauvegarde instantanée dès qu'un avatar est choisi, téléversé ou généré.
+   * Écrit directement dans le stockage synchrone et notifie le parent en préservant toutes ses propriétés.
    */
   const applyAndSaveAvatar = (newAvatarUrl: string, message: string = 'Avatar mis à jour et enregistré !') => {
-    setAvatar(newAvatarUrl);
+    if (!newAvatarUrl || !newAvatarUrl.trim()) return;
+    const cleanUrl = newAvatarUrl.trim();
+    setAvatar(cleanUrl);
     setAvatarError(null);
-    persistCustomAvatar(newAvatarUrl);
+    persistCustomAvatar(cleanUrl);
 
     const updatedUser: UserProfile = {
       ...user,
-      avatar: newAvatarUrl,
+      avatar: cleanUrl,
       name: name.trim() || user.name,
       handle: handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`,
       bio: bio.trim(),
@@ -135,6 +138,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleSaveAndClose = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const storedAvatar = getCustomAvatarSync();
+    // Priorité absolue : l'avatar choisi dans la modale (avatar), puis le stockage local, puis le profil utilisateur
     const finalAvatar = avatar || storedAvatar || user.avatar;
 
     if (finalAvatar) {

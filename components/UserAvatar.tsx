@@ -12,11 +12,11 @@ interface UserAvatarProps {
 }
 
 /**
- * Composant Avatar universel & résistant aux pannes pour KeoClub.
- * - Utilise une clé dynamique (key={src}) pour forcer le remontage immédiat à chaque changement
- * - Supprime l'entête Referer (referrerPolicy="no-referrer") évitant tout blocage hotlink/CDN
- * - En cas d'erreur de chargement ou d'absence d'image, affiche un badge stylé avec initiale
- * - Aucun piratage direct du DOM (e.target.src), 100% synchronisé avec l'état React.
+ * Composant Avatar universel & ultra-résilient pour KeoClub.
+ * - Réinitialise immédiatement l'état d'erreur lors d'un changement de src
+ * - Supprime le Referer HTTP (referrerPolicy="no-referrer") évitant les blocages CDN
+ * - Supporte nativement les Data URLs base64, SVG Dicebear et URLs distantes
+ * - En cas d'erreur réseau, affiche un fallback stylé avec l'initiale
  */
 export const UserAvatar: React.FC<UserAvatarProps> = ({
   src,
@@ -35,7 +35,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const cleanName = (name || 'Keo').trim().replace(/^@/, '');
   const initial = (cleanName[0] || 'K').toUpperCase();
 
-  if (!src || hasError) {
+  // Si pas de source fournie ou erreur confirmée de chargement d'image
+  if (!src || !src.trim() || hasError) {
     return (
       <div
         onClick={onClick}
@@ -52,6 +53,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       key={src}
       src={src}
       alt={alt || cleanName}
+      crossOrigin="anonymous"
       referrerPolicy="no-referrer"
       onError={() => setHasError(true)}
       onClick={onClick}
@@ -60,3 +62,4 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     />
   );
 };
+

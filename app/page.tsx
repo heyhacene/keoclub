@@ -1515,7 +1515,13 @@ export default function KeoClubHome() {
         user={user}
         onSaveUser={(u) => {
           const fresh = { ...u };
-          setUser(fresh);
+          setUser((prev) => ({
+            ...prev,
+            ...fresh,
+            // Conserver impérativement les topPicks actuels si non fournis dans la modale
+            topPicks: fresh.topPicks || prev.topPicks || {},
+            avatar: fresh.avatar || prev.avatar,
+          }));
           saveUserProfile(fresh);
           if (fresh.avatar) {
             persistCustomAvatar(fresh.avatar);

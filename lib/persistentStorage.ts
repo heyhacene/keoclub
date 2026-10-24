@@ -340,15 +340,17 @@ export async function restorePersistentState(): Promise<{
     } catch {}
   }
 
-  // Si userProfile contient un avatar et qu'on n'a pas encore customAvatar
-  if (!customAvatar && userProfile?.avatar && userProfile.avatar.trim()) {
-    customAvatar = userProfile.avatar.trim();
-    persistCustomAvatar(customAvatar).catch(() => {});
-  }
-
-  // Si on a un avatar personnalisé restauré, il est prioritaire à 100%
+  // Ne JAMAIS écraser un avatar personnalisé avec un avatar par défaut !
+  // Si customAvatar est défini, il est prioritaire absolu et garanti à 100%
   if (customAvatar && userProfile) {
     userProfile.avatar = customAvatar;
+  } else if (!customAvatar && userProfile?.avatar && userProfile.avatar.trim()) {
+    // Si et seulement si l'avatar dans userProfile n'est pas l'avatar par défaut de base
+    const userAv = userProfile.avatar.trim();
+    if (userAv && !userAv.includes('photo-1534528741775-53994a69daeb')) {
+      customAvatar = userAv;
+      persistCustomAvatar(customAvatar).catch(() => {});
+    }
   }
 
   return { customAvatar, userProfile };
