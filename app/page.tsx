@@ -136,7 +136,15 @@ export default function KeoClubHome() {
       setUser((prev) => {
         // Si l'utilisateur en mémoire a déjà des topPicks, ne jamais les écraser avec des valeurs par défaut
         const finalTopPicks = prev.topPicks || userProfile?.topPicks || {};
-        const finalAvatar = cleanAvatar || (userProfile?.avatar && userProfile.avatar.trim() ? userProfile.avatar.trim() : prev.avatar);
+
+        let finalAvatar = prev.avatar;
+        if (cleanAvatar) {
+          finalAvatar = cleanAvatar;
+        } else if (userProfile?.avatar && userProfile.avatar.trim() && !userProfile.avatar.includes('photo-1534528741775-53994a69daeb')) {
+          finalAvatar = userProfile.avatar.trim();
+        } else if (prev.avatar && !prev.avatar.includes('photo-1534528741775-53994a69daeb')) {
+          finalAvatar = prev.avatar;
+        }
 
         return {
           ...prev,
@@ -165,6 +173,15 @@ export default function KeoClubHome() {
       saveFriends(friends);
     }
   }, [friends, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      saveUserProfile(user);
+      if (user.avatar && user.avatar.trim() && !user.avatar.includes('photo-1534528741775-53994a69daeb')) {
+        persistCustomAvatar(user.avatar.trim());
+      }
+    }
+  }, [user, isLoaded]);
 
   // Nombre de drops reçus en attente
   const pendingDropsCount = useMemo(() => {

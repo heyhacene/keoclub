@@ -310,7 +310,15 @@ export function loadUserProfile(): UserProfile {
     }
 
     const parsed: UserProfile = JSON.parse(raw);
-    const resolvedAvatar = customAvatar || (parsed.avatar && parsed.avatar.trim() ? parsed.avatar.trim() : DEFAULT_USER.avatar);
+    const parsedAv = parsed.avatar && parsed.avatar.trim() ? parsed.avatar.trim() : null;
+    let resolvedAvatar = DEFAULT_USER.avatar;
+
+    if (customAvatar) {
+      resolvedAvatar = customAvatar;
+    } else if (parsedAv && !parsedAv.includes('photo-1534528741775-53994a69daeb')) {
+      resolvedAvatar = parsedAv;
+    }
+
     parsed.avatar = resolvedAvatar;
 
     // S'assurer que la structure topPicks existe

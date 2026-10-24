@@ -211,7 +211,10 @@ export function getCustomAvatarSync(): string | null {
   const val =
     syncStorageGet(STORAGE_KEYS.CUSTOM_AVATAR) ||
     syncStorageGet(STORAGE_KEYS.LEGACY_AVATAR);
-  return val && val.trim() ? val.trim() : null;
+  if (val && val.trim() && !val.includes('photo-1534528741775-53994a69daeb')) {
+    return val.trim();
+  }
+  return null;
 }
 
 /**
@@ -260,7 +263,6 @@ export async function restoreCustomAvatar(): Promise<string | null> {
   // 1. Vérifier le pont natif Android & LocalStorage (synchrone)
   const syncVal = getCustomAvatarSync();
   if (syncVal) {
-    // S'assurer que les deux clés sont bien synchronisées partout
     syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, syncVal);
     syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, syncVal);
     nativePrefSet(STORAGE_KEYS.CUSTOM_AVATAR, syncVal).catch(() => {});
@@ -272,7 +274,7 @@ export async function restoreCustomAvatar(): Promise<string | null> {
     const native =
       (await nativePrefGet(STORAGE_KEYS.CUSTOM_AVATAR)) ||
       (await nativePrefGet(STORAGE_KEYS.LEGACY_AVATAR));
-    if (native && native.trim()) {
+    if (native && native.trim() && !native.includes('photo-1534528741775-53994a69daeb')) {
       const clean = native.trim();
       syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, clean);
       syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, clean);
@@ -286,7 +288,7 @@ export async function restoreCustomAvatar(): Promise<string | null> {
     const idbVal =
       (await idbGet<string>(STORAGE_KEYS.CUSTOM_AVATAR)) ||
       (await idbGet<string>(STORAGE_KEYS.LEGACY_AVATAR));
-    if (idbVal && idbVal.trim()) {
+    if (idbVal && idbVal.trim() && !idbVal.includes('photo-1534528741775-53994a69daeb')) {
       const clean = idbVal.trim();
       syncStorageSet(STORAGE_KEYS.CUSTOM_AVATAR, clean);
       syncStorageSet(STORAGE_KEYS.LEGACY_AVATAR, clean);
