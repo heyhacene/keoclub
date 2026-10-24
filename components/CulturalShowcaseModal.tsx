@@ -278,11 +278,18 @@ export const CulturalShowcaseModal: React.FC<CulturalShowcaseModalProps> = ({
               <span className="text-[11px] text-slate-400">Films, séries, sons, livres & podcasts</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {pillars.map((pillar) => {
-                const IconComponent = pillar.icon;
-                const media = pillar.media;
-                if (!media) return null;
+            {pillars.filter((p) => p.media).length === 0 && !overall ? (
+              <div className="p-8 text-center bg-club-950/50 rounded-2xl border border-club-800">
+                <p className="text-xs text-slate-400">
+                  {friend.name} n&apos;a pas encore renseigné ses coups de cœur culturels.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {pillars.map((pillar) => {
+                  const IconComponent = pillar.icon;
+                  const media = pillar.media;
+                  if (!media) return null;
 
                 const isAdded = addedIds[media.id] || isMediaInMyList?.(media.id);
                 const isPlaying = isPlayingAudioUrl === media.previewAudioUrl;
@@ -367,7 +374,8 @@ export const CulturalShowcaseModal: React.FC<CulturalShowcaseModalProps> = ({
                 );
               })}
             </div>
-          </div>
+          )}
+        </div>
         </div>
       </div>
     </div>

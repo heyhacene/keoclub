@@ -48,24 +48,28 @@ export const TopPicksEditorModal: React.FC<TopPicksEditorModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [personalNoteInput, setPersonalNoteInput] = useState('');
 
-  // Resynchroniser avec le profil à chaque ouverture (évite les données périmées)
+  // Resynchroniser avec le profil à chaque ouverture et mise à jour des props
   useEffect(() => {
     if (isOpen) {
       setCurrentTops(topPicks);
-      setSelectedCategory(defaultCategory);
       const n =
-        defaultCategory === 'overall' ? topPicks.overallNote :
-        defaultCategory === 'movie' ? topPicks.movieNote :
-        defaultCategory === 'tv' ? topPicks.tvNote :
-        defaultCategory === 'music' ? topPicks.musicNote :
-        defaultCategory === 'book' ? topPicks.bookNote :
+        selectedCategory === 'overall' ? topPicks.overallNote :
+        selectedCategory === 'movie' ? topPicks.movieNote :
+        selectedCategory === 'tv' ? topPicks.tvNote :
+        selectedCategory === 'music' ? topPicks.musicNote :
+        selectedCategory === 'book' ? topPicks.bookNote :
         topPicks.podcastNote;
       setPersonalNoteInput(n || '');
+    }
+  }, [isOpen, topPicks, selectedCategory]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCategory(defaultCategory);
       setSearchQuery('');
       setSearchResults([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, defaultCategory]);
 
   if (!isOpen) return null;
 
@@ -149,22 +153,28 @@ export const TopPicksEditorModal: React.FC<TopPicksEditorModalProps> = ({
     let updated: UserTopPicks = { ...currentTops };
     switch (selectedCategory) {
       case 'overall':
-        updated = { ...updated, overallFavorite: undefined, overallNote: undefined };
+        delete updated.overallFavorite;
+        delete updated.overallNote;
         break;
       case 'movie':
-        updated = { ...updated, movie: undefined, movieNote: undefined };
+        delete updated.movie;
+        delete updated.movieNote;
         break;
       case 'tv':
-        updated = { ...updated, tv: undefined, tvNote: undefined };
+        delete updated.tv;
+        delete updated.tvNote;
         break;
       case 'music':
-        updated = { ...updated, music: undefined, musicNote: undefined };
+        delete updated.music;
+        delete updated.musicNote;
         break;
       case 'book':
-        updated = { ...updated, book: undefined, bookNote: undefined };
+        delete updated.book;
+        delete updated.bookNote;
         break;
       case 'podcast':
-        updated = { ...updated, podcast: undefined, podcastNote: undefined };
+        delete updated.podcast;
+        delete updated.podcastNote;
         break;
     }
     setCurrentTops(updated);

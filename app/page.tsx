@@ -133,17 +133,18 @@ export default function KeoClubHome() {
     restorePersistentState().then(({ customAvatar, userProfile }) => {
       const cleanAvatar = customAvatar && customAvatar.trim() ? customAvatar.trim() : null;
 
-      if (cleanAvatar || userProfile) {
-        setUser((prev) => {
-          const merged = userProfile ? { ...prev, ...userProfile } : { ...prev };
-          const finalAvatar = cleanAvatar || (merged.avatar && merged.avatar !== DEFAULT_USER.avatar ? merged.avatar : prev.avatar) || DEFAULT_USER.avatar;
+      setUser((prev) => {
+        // Si l'utilisateur en mémoire a déjà des topPicks, ne jamais les écraser avec des valeurs par défaut
+        const finalTopPicks = prev.topPicks || userProfile?.topPicks || {};
+        const finalAvatar = cleanAvatar || (userProfile?.avatar && userProfile.avatar.trim() ? userProfile.avatar.trim() : prev.avatar);
 
-          return {
-            ...merged,
-            avatar: finalAvatar,
-          };
-        });
-      }
+        return {
+          ...prev,
+          ...(userProfile || {}),
+          topPicks: finalTopPicks,
+          avatar: finalAvatar,
+        };
+      });
     });
   }, []);
 
@@ -294,34 +295,39 @@ export default function KeoClubHome() {
 
   // 4e. Action : Retirer un coup de cœur du Panthéon
   const handleRemoveTopPick = (category: 'overall' | 'movie' | 'tv' | 'music' | 'book' | 'podcast') => {
-    const currentTop = { ...(user.topPicks || {}) };
-    switch (category) {
-      case 'overall':
-        currentTop.overallFavorite = undefined;
-        currentTop.overallNote = undefined;
-        break;
-      case 'movie':
-        currentTop.movie = undefined;
-        currentTop.movieNote = undefined;
-        break;
-      case 'tv':
-        currentTop.tv = undefined;
-        currentTop.tvNote = undefined;
-        break;
-      case 'music':
-        currentTop.music = undefined;
-        currentTop.musicNote = undefined;
-        break;
-      case 'book':
-        currentTop.book = undefined;
-        currentTop.bookNote = undefined;
-        break;
-      case 'podcast':
-        currentTop.podcast = undefined;
-        currentTop.podcastNote = undefined;
-        break;
-    }
-    handleSaveUserTopPicks(currentTop);
+    setUser((prev) => {
+      const currentTop = { ...(prev.topPicks || {}) };
+      switch (category) {
+        case 'overall':
+          delete currentTop.overallFavorite;
+          delete currentTop.overallNote;
+          break;
+        case 'movie':
+          delete currentTop.movie;
+          delete currentTop.movieNote;
+          break;
+        case 'tv':
+          delete currentTop.tv;
+          delete currentTop.tvNote;
+          break;
+        case 'music':
+          delete currentTop.music;
+          delete currentTop.musicNote;
+          break;
+        case 'book':
+          delete currentTop.book;
+          delete currentTop.bookNote;
+          break;
+        case 'podcast':
+          delete currentTop.podcast;
+          delete currentTop.podcastNote;
+          break;
+      }
+      const updated: UserProfile = { ...prev, topPicks: currentTop };
+      saveUserProfile(updated);
+      updateUserInCloud(updated).catch(() => {});
+      return updated;
+    });
   };
 
   // 5. Action : Mettre à jour le statut personnel
@@ -400,16 +406,18 @@ export default function KeoClubHome() {
   };
 
   const handleSaveUserTopPicks = (newTopPicks: UserTopPicks) => {
-    const updated: UserProfile = {
-      ...user,
-      topPicks: newTopPicks,
-    };
-    setUser({ ...updated });
-    saveUserProfile(updated);
-    if (updated.avatar) {
-      persistCustomAvatar(updated.avatar);
-    }
-    updateUserInCloud(updated).catch(() => {});
+    setUser((prev) => {
+      const updated: UserProfile = {
+        ...prev,
+        topPicks: newTopPicks,
+      };
+      saveUserProfile(updated);
+      if (updated.avatar) {
+        persistCustomAvatar(updated.avatar);
+      }
+      updateUserInCloud(updated).catch(() => {});
+      return updated;
+    });
   };
 
   /**
@@ -1130,16 +1138,28 @@ export default function KeoClubHome() {
                   <Crown className="w-4 h-4 fill-amber-400" />
                   <span>Mon Coup de Cœur Absolu</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTopEditorCategory('overall');
-                    setIsTopEditorOpen(true);
-                  }}
-                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 underline"
-                >
-                  {user.topPicks?.overallFavorite ? 'Changer' : 'Définir'}
-                </button>
+                <div className="flex items-center space-x-2">
+                  {user.topPicks?.overallFavorite && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTopPick('overall')}
+                      className="p-1 text-slate-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition"
+                      title="Retirer ce coup de cœur absolu"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopEditorCategory('overall');
+                      setIsTopEditorOpen(true);
+                    }}
+                    className="text-[11px] font-bold text-amber-400 hover:text-amber-300 underline"
+                  >
+                    {user.topPicks?.overallFavorite ? 'Changer' : 'Définir'}
+                  </button>
+                </div>
               </div>
 
               {user.topPicks?.overallFavorite ? (

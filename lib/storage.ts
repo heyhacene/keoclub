@@ -313,8 +313,9 @@ export function loadUserProfile(): UserProfile {
     const resolvedAvatar = customAvatar || (parsed.avatar && parsed.avatar.trim() ? parsed.avatar.trim() : DEFAULT_USER.avatar);
     parsed.avatar = resolvedAvatar;
 
+    // S'assurer que la structure topPicks existe
     if (!parsed.topPicks) {
-      parsed.topPicks = DEFAULT_USER.topPicks;
+      parsed.topPicks = {};
     }
     return parsed;
   } catch {
