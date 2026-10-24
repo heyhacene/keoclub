@@ -7,7 +7,7 @@ export const DEFAULT_USER: UserProfile = {
   id: 'user-me',
   name: 'Hacène',
   handle: '@hacene',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+  avatar: '',
   bio: 'Amateur de grands récits de SF, de vinyles et de récits immersifs.',
   shareCode: 'KEO-CLUB-4821',
   topPicks: {

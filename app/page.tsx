@@ -127,14 +127,14 @@ export default function KeoClubHome() {
       initialUser.avatar = customAvatarSync;
     }
     setUser(initialUser);
-    setIsLoaded(true);
 
     // 2. Restauration asynchrone complémentaire (Capacitor Preferences, IndexedDB SQLite & SharedPreferences)
+    // IMPORTANT : On n'active isLoaded(true) qu'APRES la fin de cette restauration pour empêcher
+    // le useEffect([user, isLoaded]) d'écraser prématurément le profil sauvegardé avec les valeurs par défaut !
     restorePersistentState().then(({ customAvatar, userProfile }) => {
       const cleanAvatar = customAvatar && customAvatar.trim() ? customAvatar.trim() : null;
 
       setUser((prev) => {
-        // Si l'utilisateur en mémoire a déjà des topPicks, ne jamais les écraser avec des valeurs par défaut
         const finalTopPicks = prev.topPicks || userProfile?.topPicks || {};
 
         let finalAvatar = prev.avatar;
@@ -153,6 +153,9 @@ export default function KeoClubHome() {
           avatar: finalAvatar,
         };
       });
+      setIsLoaded(true);
+    }).catch(() => {
+      setIsLoaded(true);
     });
   }, []);
 
