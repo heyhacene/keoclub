@@ -1,4 +1,4 @@
-import { PersonalItem, DropItem, Friend, UserProfile, MediaItem, PersonalItemStatus, UserTopPicks } from '@/types/culture';
+import { PersonalItem, DropItem, Friend, UserProfile, MediaItem, UserTopPicks } from '@/types/culture';
 import { TRENDING_SUGGESTIONS } from './api-culture';
 import { STORAGE_KEYS, persistCustomAvatar, idbSet, syncStorageGet, syncStorageSet, getCustomAvatarSync } from './persistentStorage';
 
