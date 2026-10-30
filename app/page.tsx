@@ -479,7 +479,8 @@ export default function KeoClubHome() {
         const cloudDrops = await pullDropsFromCloud(freshUser.id);
         if (cloudDrops && cloudDrops.length > 0) {
           setDrops((prev) => {
-            const ids = new Set(prev.map((d) => d.id));
+            const ids = new Set<string>();
+            for (const item of prev) ids.add(item.id);
             const toAdd = cloudDrops.filter((d) => !ids.has(d.id));
             const merged = [...toAdd, ...prev];
             saveDrops(merged);
