@@ -22,7 +22,7 @@ import { UserProfile } from '@/types/culture';
 import { getTmdbApiKey, saveTmdbApiKey } from '@/lib/api-culture';
 import { getDirectKeoClubApkUrl, DEFAULT_KEOCLUB_BUILD, fetchLatestKeoClubApk } from '@/lib/apkUpdate';
 import { AVATAR_PRESETS, processImageFileToAvatar, generateRandomAvatarUrl } from '@/lib/imageUtils';
-import { STORAGE_KEYS, persistCustomAvatar, getCustomAvatarSync } from '@/lib/persistentStorage';
+import { persistCustomAvatar, getCustomAvatarSync } from '@/lib/persistentStorage';
 import { UserAvatar } from './UserAvatar';
 
 interface SettingsModalProps {
