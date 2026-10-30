@@ -22,7 +22,7 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react';
-import { Friend, MediaItem, MediaType, UserTopPicks } from '@/types/culture';
+import { Friend, MediaItem, MediaType } from '@/types/culture';
 import { UserAvatar } from './UserAvatar';
 
 interface CulturalShowcaseModalProps {
