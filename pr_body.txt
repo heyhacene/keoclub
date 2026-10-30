@@ -1,0 +1,12 @@
+🎯 **What:** The testing gap addressed
+A missing test suite for `lib/imageUtils.ts`, which contains logic for manipulating image files, checking types, dynamically drawing to a Canvas element, and generating URLs for avatar icons. These tests handle complex DOM/Canvas API mocking (including `FileReader` and `Image`) inside a JSDOM environment.
+
+📊 **Coverage:** What scenarios are now tested
+- Validating dicebear URL format in `generateRandomAvatarUrl`.
+- Rejecting invalid image files based on extension and mime type.
+- Creating the image element using `URL.createObjectURL`, simulating load events.
+- Properly calculating and sizing the image for the canvas during center-cropping.
+- Testing fallback behavior via `FileReader` when `Image` load fails initially.
+
+✨ **Result:** The improvement in test coverage
+The previously untested utilities in `imageUtils.ts` are now comprehensively covered. These new tests assure that avatar operations gracefully fallback when primary web APIs fail, increasing the resilience and test coverage of the NextJS application's image processing functionality.
