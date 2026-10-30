@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Search, Bell, Settings, Flame } from 'lucide-react';
+import { Search, Bell, Settings, Flame } from 'lucide-react';
 import { UserProfile } from '@/types/culture';
 import { UserAvatar } from './UserAvatar';
 
