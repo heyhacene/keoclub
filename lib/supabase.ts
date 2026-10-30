@@ -1,15 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, DropItem, PersonalItem, Friend, MediaItem } from '@/types/culture';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://qvfmfstwrkcerzlbemzb.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2Zm1mc3R3cmtjZXJ6bGJlbXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNjE1NDksImV4cCI6MjEwNzYzNzU0OX0.-VCES2YX_FDjWct12sTgTaDtfqnqUfXfPcMS39UmRBs';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy-project.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: typeof window !== 'undefined',
-    autoRefreshToken: typeof window !== 'undefined',
-  },
-});
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: typeof window !== 'undefined',
+      autoRefreshToken: typeof window !== 'undefined',
+    },
+  }
+);
 
 export interface CloudUserAccount {
   id: string;
@@ -34,6 +38,9 @@ export async function registerWithPseudo(params: {
   bio?: string;
 }): Promise<{ user?: UserProfile; error?: string }> {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+       return { error: 'Supabase configuration is missing. Cannot register.' };
+    }
     const cleanHandle = params.handle.trim().toLowerCase().replace(/^@/, '');
     const cleanName = params.name.trim();
     const cleanPin = params.pin.trim();
@@ -106,6 +113,9 @@ export async function loginWithPseudo(params: {
   pin: string;
 }): Promise<{ user?: UserProfile; error?: string }> {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+       return { error: 'Supabase configuration is missing. Cannot login.' };
+    }
     const cleanHandle = params.handle.trim().toLowerCase().replace(/^@/, '');
     const cleanPin = params.pin.trim();
 
@@ -144,6 +154,7 @@ export async function loginWithPseudo(params: {
  */
 export async function updateUserInCloud(user: UserProfile): Promise<boolean> {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return false;
     const { error } = await supabase
       .from('keoclub_users')
       .update({
@@ -166,6 +177,7 @@ export async function updateUserInCloud(user: UserProfile): Promise<boolean> {
  */
 export async function searchFriendsInCloud(query: string): Promise<Friend[]> {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
     const clean = query.trim().toLowerCase().replace(/^@/, '');
     if (!clean) return [];
 
@@ -197,6 +209,7 @@ export async function searchFriendsInCloud(query: string): Promise<Friend[]> {
  */
 export async function pushDropToCloud(drop: DropItem): Promise<boolean> {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return false;
     const payload = {
       id: drop.id,
       sender_id: drop.senderId,
@@ -229,6 +242,7 @@ export async function pushDropToCloud(drop: DropItem): Promise<boolean> {
  */
 export async function pullDropsFromCloud(recipientId: string): Promise<DropItem[]> {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
     if (!recipientId) return [];
 
     const { data, error } = await supabase
