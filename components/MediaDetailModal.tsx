@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Send, Bookmark, BookmarkCheck, Star, Play, Pause, ExternalLink, CheckCircle2, Clock, Sparkles, Heart, Trash2 } from 'lucide-react';
+import { X, Send, Bookmark, Star, Play, Pause, ExternalLink, CheckCircle2, Clock, Sparkles, Heart, Trash2 } from 'lucide-react';
 import { MediaItem, MediaType, PersonalItem, PersonalItemStatus } from '@/types/culture';
 import { UserAvatar } from './UserAvatar';
 

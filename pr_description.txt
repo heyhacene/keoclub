@@ -1,0 +1,4 @@
+🎯 **What:** Removed the unused import `BookmarkCheck` from `components/MediaDetailModal.tsx`.
+💡 **Why:** `BookmarkCheck` was imported but not used anywhere in the file. Removing unused imports improves code clarity and maintainability.
+✅ **Verification:** I successfully built the project using `npm run build` and ran `npm run lint` which confirmed no new issues were introduced by this change. No test suite was available to run.
+✨ **Result:** A cleaner import section in `MediaDetailModal.tsx`, reducing visual clutter.
