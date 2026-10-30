@@ -57,7 +57,7 @@ export const SearchDiscoveryModal: React.FC<SearchDiscoveryModalProps> = ({
 
   if (!isOpen) return null;
 
-  const categories: { id: 'all' | MediaType; label: string; icon: any }[] = [
+  const categories: { id: 'all' | MediaType; label: string; icon: React.ElementType }[] = [
     { id: 'all', label: 'Tous', icon: Sparkles },
     { id: 'movie', label: 'Films', icon: Film },
     { id: 'tv', label: 'Séries', icon: Tv },
