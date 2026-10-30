@@ -177,38 +177,60 @@ export async function searchMoviesAndSeries(query: string, type: 'movie' | 'tv')
 /**
  * 5. Moteur de recherche universel multi-médias
  */
+const searchCache = new Map<string, { promise: Promise<MediaItem[]>, timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes cache
+
 export async function universalSearch(query: string, filterType: 'all' | MediaType = 'all'): Promise<MediaItem[]> {
   const cleanQ = query.trim();
   if (!cleanQ) return [];
 
-  if (filterType === 'movie') return searchMoviesAndSeries(cleanQ, 'movie');
-  if (filterType === 'tv') return searchMoviesAndSeries(cleanQ, 'tv');
-  if (filterType === 'music') return searchMusic(cleanQ);
-  if (filterType === 'book') return searchBooks(cleanQ);
-  if (filterType === 'podcast') return searchPodcasts(cleanQ);
+  const cacheKey = `${filterType}:${cleanQ}`;
+  const now = Date.now();
 
-  // Recherche groupée simultanée sur les 5 univers
-  const [movies, series, musics, books, podcasts] = await Promise.all([
-    searchMoviesAndSeries(cleanQ, 'movie').catch(() => []),
-    searchMoviesAndSeries(cleanQ, 'tv').catch(() => []),
-    searchMusic(cleanQ).catch(() => []),
-    searchBooks(cleanQ).catch(() => []),
-    searchPodcasts(cleanQ).catch(() => []),
-  ]);
-
-  // Entremêler intelligemment les résultats
-  const combined: MediaItem[] = [];
-  const maxLen = Math.max(movies.length, series.length, musics.length, books.length, podcasts.length);
-
-  for (let i = 0; i < maxLen; i++) {
-    if (movies[i]) combined.push(movies[i]);
-    if (series[i]) combined.push(series[i]);
-    if (musics[i]) combined.push(musics[i]);
-    if (books[i]) combined.push(books[i]);
-    if (podcasts[i]) combined.push(podcasts[i]);
+  const cached = searchCache.get(cacheKey);
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.promise;
   }
 
-  return combined;
+  const searchPromise = (async () => {
+    if (filterType === 'movie') return searchMoviesAndSeries(cleanQ, 'movie');
+    if (filterType === 'tv') return searchMoviesAndSeries(cleanQ, 'tv');
+    if (filterType === 'music') return searchMusic(cleanQ);
+    if (filterType === 'book') return searchBooks(cleanQ);
+    if (filterType === 'podcast') return searchPodcasts(cleanQ);
+
+    // Recherche groupée simultanée sur les 5 univers
+    const [movies, series, musics, books, podcasts] = await Promise.all([
+      searchMoviesAndSeries(cleanQ, 'movie').catch(() => []),
+      searchMoviesAndSeries(cleanQ, 'tv').catch(() => []),
+      searchMusic(cleanQ).catch(() => []),
+      searchBooks(cleanQ).catch(() => []),
+      searchPodcasts(cleanQ).catch(() => []),
+    ]);
+
+    // Entremêler intelligemment les résultats
+    const combined: MediaItem[] = [];
+    const maxLen = Math.max(movies.length, series.length, musics.length, books.length, podcasts.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      if (movies[i]) combined.push(movies[i]);
+      if (series[i]) combined.push(series[i]);
+      if (musics[i]) combined.push(musics[i]);
+      if (books[i]) combined.push(books[i]);
+      if (podcasts[i]) combined.push(podcasts[i]);
+    }
+
+    return combined;
+  })();
+
+  searchCache.set(cacheKey, { promise: searchPromise, timestamp: now });
+
+  try {
+    return await searchPromise;
+  } catch (err) {
+    searchCache.delete(cacheKey);
+    throw err;
+  }
 }
 
 export const searchAllCulture = universalSearch;
