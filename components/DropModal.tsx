@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Send, Sparkles, Check, Flame, MessageSquare } from 'lucide-react';
+import { X, Send, Sparkles, Check } from 'lucide-react';
 import { MediaItem, Friend } from '@/types/culture';
 import { UserAvatar } from './UserAvatar';
 
