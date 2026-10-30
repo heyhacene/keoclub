@@ -429,8 +429,17 @@ export default function KeoClubHome() {
       .then((cloudDrops) => {
         if (cloudDrops && cloudDrops.length > 0) {
           setDrops((prev) => {
-            const ids = new Set(prev.map((d) => d.id));
-            const toAdd = cloudDrops.filter((d) => !ids.has(d.id));
+            const ids = new Set<string>();
+            for (let i = 0; i < prev.length; i++) {
+              ids.add(prev[i].id);
+            }
+            const toAdd = [];
+            for (let i = 0; i < cloudDrops.length; i++) {
+              if (!ids.has(cloudDrops[i].id)) {
+                toAdd.push(cloudDrops[i]);
+              }
+            }
+            if (toAdd.length === 0) return prev;
             return [...toAdd, ...prev];
           });
         }
