@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, X, Music, Volume2 } from 'lucide-react';
+import { Play, Pause, X, Volume2 } from 'lucide-react';
 
 interface AudioPlayerDrawerProps {
   audioUrl: string | null;
