@@ -2,7 +2,7 @@ import { MediaItem, MediaType } from '@/types/culture';
 import { STORAGE_KEYS, syncStorageGet, syncStorageSet } from './persistentStorage';
 
 // Clé publique TMDB par défaut (avec fallback automatique si indisponible)
-const DEFAULT_TMDB_API_KEY = '8265bd1679663a7ea12ac168da84d2e8';
+const DEFAULT_TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || '';
 
 export function getTmdbApiKey(): string {
   if (typeof window !== 'undefined') {
