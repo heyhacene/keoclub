@@ -1,4 +1,4 @@
-import { MediaItem, MediaType } from '@/types/culture';
+import { MediaItem, MediaType, ITunesMusicItem, ITunesPodcastItem, GoogleBooksItem, TMDBItem } from '@/types/culture';
 import { STORAGE_KEYS, syncStorageGet, syncStorageSet } from './persistentStorage';
 
 // Clé publique TMDB par défaut (avec fallback automatique si indisponible)
@@ -29,7 +29,7 @@ export async function searchMusic(query: string): Promise<MediaItem[]> {
     const data = await res.json();
     if (!data.results) return [];
 
-    return data.results.map((item: any) => {
+    return data.results.map((item: ITunesMusicItem) => {
       const highResArt = (item.artworkUrl100 || '').replace('100x100bb', '600x600bb');
       const year = item.releaseDate ? new Date(item.releaseDate).getFullYear() : undefined;
       const durationMin = item.trackTimeMillis ? Math.round(item.trackTimeMillis / 60000) : undefined;
@@ -66,7 +66,7 @@ export async function searchPodcasts(query: string): Promise<MediaItem[]> {
     const data = await res.json();
     if (!data.results) return [];
 
-    return data.results.map((item: any) => {
+    return data.results.map((item: ITunesPodcastItem) => {
       const highResArt = (item.artworkUrl100 || item.artworkUrl600 || '').replace('100x100bb', '600x600bb');
       const year = item.releaseDate ? new Date(item.releaseDate).getFullYear() : undefined;
 
@@ -102,7 +102,7 @@ export async function searchBooks(query: string): Promise<MediaItem[]> {
     const data = await res.json();
     if (!data.items) return [];
 
-    return data.items.map((item: any) => {
+    return data.items.map((item: GoogleBooksItem) => {
       const info = item.volumeInfo || {};
       let cover = info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || '';
       if (cover.startsWith('http://')) {
@@ -144,7 +144,7 @@ export async function searchMoviesAndSeries(query: string, type: 'movie' | 'tv')
     const data = await res.json();
     if (!data.results) return [];
 
-    return data.results.slice(0, 15).map((item: any) => {
+    return data.results.slice(0, 15).map((item: TMDBItem) => {
       const isMovie = type === 'movie';
       const title = isMovie ? item.title : item.name;
       const releaseDate = isMovie ? item.release_date : item.first_air_date;
