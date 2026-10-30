@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Download, Sparkles, X, ArrowUpCircle } from 'lucide-react';
+import { Download, Sparkles, X } from 'lucide-react';
 import { LatestApkRelease, DEFAULT_KEOCLUB_BUILD } from '@/lib/apkUpdate';
 
 interface UpdateModalProps {
