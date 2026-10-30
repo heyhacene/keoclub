@@ -87,3 +87,60 @@ export interface UserProfile {
   shareCode: string;
   topPicks?: UserTopPicks;
 }
+
+export interface ITunesMusicItem {
+  trackId?: string | number;
+  collectionId?: string | number;
+  trackName?: string;
+  collectionName?: string;
+  artistName?: string;
+  artworkUrl100?: string;
+  releaseDate?: string;
+  trackTimeMillis?: number;
+  primaryGenreName?: string;
+  previewUrl?: string;
+  trackViewUrl?: string;
+  collectionViewUrl?: string;
+}
+
+export interface ITunesPodcastItem {
+  collectionId?: string | number;
+  collectionName?: string;
+  artistName?: string;
+  artworkUrl100?: string;
+  artworkUrl600?: string;
+  releaseDate?: string;
+  collectionCensoredName?: string;
+  trackCount?: number;
+  genres?: string[];
+  collectionViewUrl?: string;
+}
+
+export interface GoogleBooksItem {
+  id?: string;
+  volumeInfo?: {
+    title?: string;
+    authors?: string[];
+    publishedDate?: string;
+    description?: string;
+    subtitle?: string;
+    categories?: string[];
+    pageCount?: number;
+    infoLink?: string;
+    imageLinks?: {
+      thumbnail?: string;
+      smallThumbnail?: string;
+    };
+  };
+}
+
+export interface TMDBItem {
+  id?: string | number;
+  title?: string;
+  name?: string;
+  release_date?: string;
+  first_air_date?: string;
+  poster_path?: string;
+  overview?: string;
+  vote_average?: number;
+}
