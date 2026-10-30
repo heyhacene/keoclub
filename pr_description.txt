@@ -1,0 +1,11 @@
+🧪 [testing improvement description]
+
+🎯 **What:** The testing gap addressed is the lack of unit tests for the `loginWithPseudo` function in `lib/supabase.ts`, specifically regarding error handling and edge cases.
+
+📊 **Coverage:** The scenarios now tested are:
+- Returning an error when no account is found.
+- Returning an error when the PIN code is incorrect.
+- Successfully logging in and returning a user profile.
+- Handling network errors.
+
+✨ **Result:** The improvement in test coverage is the addition of tests for all possible outcomes of the `loginWithPseudo` function, improving reliability and coverage.
